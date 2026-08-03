@@ -77,6 +77,14 @@ public class WriterController {
      * comparable or better optimization.
      */
     public boolean optimizeForInt = true;
+    /**
+     * Language-compatibility flag (GROOVY-11792): when {@code true} (the default),
+     * for-in loop variables shared with closures, lambdas, or anonymous inner
+     * classes get a fresh {@link groovy.lang.Reference} each iteration. Cached
+     * from {@link CompilerConfiguration#isForInPerIterationCaptureEnabled()} at
+     * {@link #init}. Independent of optimization options (including {@code "all"}).
+     */
+    private boolean forInPerIterationCapture = true;
     private StatementWriter statementWriter;
     private boolean fastPath;
     private TypeChooser typeChooser;
@@ -102,6 +110,7 @@ public class WriterController {
         CompilerConfiguration config = cn.getCompileUnit().getConfig();
         Map<String,Boolean> optOptions = config.getOptimizationOptions();
         boolean invokedynamic = true;
+        this.forInPerIterationCapture = config.isForInPerIterationCaptureEnabled();
         if (optOptions.isEmpty()) {
             // IGNORE
         } else if (Boolean.FALSE.equals(optOptions.get("all"))) {
@@ -125,6 +134,10 @@ public class WriterController {
             this.callSiteWriter = new IndyCallSiteWriter(this);
             this.binaryExpHelper = new IndyBinHelper(this);
         } else {
+            // Classic call-site bytecode references org.codehaus.groovy.runtime.callsite.*
+            // (optional groovy-callsite module). Fail fast at compile time rather than
+            // producing classes that blow up with NoClassDefFoundError at first invoke.
+            requireClassicCallSiteRuntime(cn);
             this.callSiteWriter = new CallSiteWriter(this);
             this.invocationWriter = new InvocationWriter(this);
             this.binaryExpHelper = new BinaryExpressionHelper(this);
@@ -160,12 +173,36 @@ public class WriterController {
     }
 
     private static ClassVisitor createClassVisitor(final ClassVisitor cv, final CompilerConfiguration config) {
-        // GRECLIPSE edit
-        if (cv instanceof groovyjarjarasm.asm.util.TraceClassVisitor || !Boolean.getBoolean("groovy.log.classgen")) {
-            return cv;
+        ClassVisitor visitor = cv;
+        /* GRECLIPSE edit
+        if (config.isLogClassgen() && !(cv instanceof LoggableClassVisitor)) {
+            visitor = new LoggableClassVisitor(cv, config);
         }
-        return new groovyjarjarasm.asm.util.TraceClassVisitor(cv, java.util.Optional.ofNullable(config.getOutput()).orElseGet(() -> new java.io.PrintWriter(System.out, true)));
+        */
+        // Apply peephole compaction to every method, including synthetic helpers.
+        return visitor instanceof PeepholeOptimizingClassVisitor
+                ? visitor
+                : new PeepholeOptimizingClassVisitor(visitor);
         // GRECLIPSE end
+    }
+
+    /**
+     * Ensures the optional classic call-site runtime is visible to the compilation
+     * class loader before emitting non-indy call-site bytecode (GROOVY-11158).
+     */
+    private static void requireClassicCallSiteRuntime(final ClassNode cn) {
+        ClassLoader loader = cn.getCompileUnit() != null
+                ? cn.getCompileUnit().getClassLoader()
+                : WriterController.class.getClassLoader();
+        try {
+            Class.forName("org.codehaus.groovy.runtime.callsite.CallSiteArray", false, loader);
+        } catch (ClassNotFoundException e) {
+            throw new GroovyBugError(
+                    "Classic call-site bytecode generation requires the optional "
+                            + "org.apache.groovy:groovy-callsite module on the classpath. "
+                            + "Either leave invokedynamic enabled (the default since Groovy 4) "
+                            + "or add groovy-callsite. See GROOVY-11158.", e);
+        }
     }
 
     //--------------------------------------------------------------------------
@@ -230,6 +267,17 @@ public class WriterController {
      */
     public CompileStack getCompileStack() {
         return compileStack;
+    }
+
+    /**
+     * Whether for-in loop variables shared with closures, lambdas, or AICs
+     * should be re-captured each iteration (language-compat flag, GROOVY-11792).
+     *
+     * @return {@code true} when per-iteration capture is enabled
+     * @see CompilerConfiguration#isForInPerIterationCaptureEnabled()
+     */
+    public boolean isForInPerIterationCaptureEnabled() {
+        return forInPerIterationCapture;
     }
 
     /**

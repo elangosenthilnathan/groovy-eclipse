@@ -4375,7 +4375,7 @@ final class SemanticHighlightingTests extends GroovyEclipseTestSuite {
 
         assertHighlighting(contents,
             new HighlightedTypedPosition(contents.indexOf('use'), 3, GROOVY_CALL),
-            new HighlightedTypedPosition(contents.indexOf('TimeCategory'), 12, CLASS),
+            new HighlightedTypedPosition(contents.indexOf('TimeCategory'), 12, isAtLeastGroovy(60) ? DEPRECATED : CLASS),
             new HighlightedTypedPosition(contents.indexOf('Date'), 4, CTOR_CALL),
             new HighlightedTypedPosition(contents.indexOf('Date'), 4, CLASS),
             new HighlightedTypedPosition(contents.indexOf('getDaylightSavingsOffset'), 24, GROOVY_CALL),

@@ -289,7 +289,7 @@ final class DefaultGroovyMethodCompletionTests extends CompletionTestSuite {
     void testNoDups1() {
         int count = 4 // (), (Map), (Closure), (Map,Closure)
         if (isAtLeastGroovy(50)) count += 2 // (Function,Function), (Map,Function,Function)
-        if (isAtLeastGroovy(60)) count += 1 // (Function)
+        if (isAtLeastGroovy(60)) count += 2 // (Function), (Map,Function)
 
         ICompletionProposal[] proposals = createProposalsAtOffset('[].collectEnt', 13)
         proposalExists(proposals, 'collectEntries', count)

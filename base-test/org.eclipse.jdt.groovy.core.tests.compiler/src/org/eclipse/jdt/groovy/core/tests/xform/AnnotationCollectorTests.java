@@ -167,7 +167,7 @@ public final class AnnotationCollectorTests extends GroovyCompilerTestSuite {
 
     @Test
     public void testAnnotationCollector6() throws Exception {
-        var bundleEntry = Platform.getBundle("org.eclipse.jdt.groovy.core.tests.compiler").getEntry("astTransformations/transforms237.jar");
+        var bundleEntry = Platform.getBundle("org.eclipse.jdt.groovy.core.tests.compiler").getEntry("astTransformations/transforms252.jar");
         cpAdditions = new String[] {FileLocator.toFileURL(bundleEntry).getPath()};
 
         //@formatter:off

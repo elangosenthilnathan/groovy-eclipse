@@ -18,6 +18,7 @@
  */
 package org.codehaus.groovy.control;
 
+import org.apache.groovy.lang.annotation.Incubating;
 import org.apache.groovy.util.Maps;
 import org.codehaus.groovy.GroovyBugError;
 import org.codehaus.groovy.control.customizers.CompilationCustomizer;
@@ -60,8 +61,46 @@ public class CompilerConfiguration {
     /** Optimization Option for enabling attaching {@link groovy.lang.Groovydoc} annotation. */
     public static final String RUNTIME_GROOVYDOC = "runtimeGroovydoc";
 
+    /**
+     * Option for enabling ANTLR parser error recovery on the Parrot parser.
+     * <p>
+     * Disabled by default. When enabled (typically for IDE editing), the parser
+     * resynchronizes after recognition errors so multiple diagnostics can be
+     * collected in one pass instead of failing fast on the first error.
+     * Stored in {@link #getOptimizationOptions()} for consistency with other
+     * compiler feature flags (e.g. {@link #GROOVYDOC}).
+     * </p>
+     *
+     * @see #isErrorRecoveryEnabled()
+     * @since 6.0.0
+     */
+    @Incubating
+    public static final String ERROR_RECOVERY = "errorRecovery";
+
     /** Joint Compilation Option for enabling generating stubs in memory. */
     public static final String MEM_STUB = "memStub";
+
+    /**
+     * System-property name for the GEP-27 incubating option that automatically packs provably-safe
+     * {@code @CompileStatic} closures (hoisting their bodies to a shared adapter instead of a class).
+     * Incubating: this switch may change or be removed until the feature graduates.
+     */
+    @Incubating
+    public static final String CLOSURE_PACKING = "groovy.target.closure.pack";
+
+    /**
+     * System-property name for the GEP-27 incubating option that, on the {@link #CLOSURE_PACKING}
+     * path, reports (as compiler warnings) each closure that could not be packed and why.
+     */
+    @Incubating
+    public static final String CLOSURE_PACKING_REPORT = "groovy.target.closure.pack.report";
+
+    /**
+     * System-property name for the GEP-27 incubating option that hoists eligible SAM lambdas to a
+     * metafactory method instead of generating a per-lambda class.
+     */
+    @Incubating
+    public static final String LAMBDA_HOISTING = "groovy.target.lambda.hoist";
 
     /** This (<code>"1.4"</code>) is the value for targetBytecode to compile for a JDK 1.4. */
     @Deprecated public static final String JDK4 = "1.4";
@@ -182,6 +221,11 @@ public class CompilerConfiguration {
         }
 
         @Override
+        public void setClassTagPreemptionDisabled(final boolean classTagPreemptionDisabled) {
+            throw new UnsupportedOperationException();
+        }
+
+        @Override
         public void setBytecodePostprocessor(final BytecodeProcessor bytecodePostprocessor) {
             throw new UnsupportedOperationException();
         }
@@ -213,6 +257,11 @@ public class CompilerConfiguration {
 
         @Override
         public void setDisabledGlobalASTTransformations(final Set<String> disabledGlobalASTTransformations) {
+            throw new UnsupportedOperationException();
+        }
+
+        @Override
+        public void setForInPerIterationCaptureEnabled(final boolean forInPerIterationCapture) {
             throw new UnsupportedOperationException();
         }
 
@@ -279,6 +328,16 @@ public class CompilerConfiguration {
 
         @Override
         public void setTargetDirectory(final File directory) {
+            throw new UnsupportedOperationException();
+        }
+
+        @Override
+        public void setTargetPhase(final int targetPhase) {
+            throw new UnsupportedOperationException();
+        }
+
+        @Override
+        public void setTargetPhase(final CompilePhase targetPhase) {
             throw new UnsupportedOperationException();
         }
 
@@ -366,6 +425,17 @@ public class CompilerConfiguration {
     private Set<String> scriptExtensions = new LinkedHashSet<>();
 
     /**
+     * Global consumer opt-out for {@link groovy.transform.stc.ClassTag @ClassTag} preemption under
+     * static compilation (GROOVY-12115). Preemption is declared by the API author
+     * ({@code @ClassTag(preempt=true)}) and contained to the declaring class; setting this flag
+     * lets the consuming build veto every preemptive upgrade anyway. Additive injection (supplying
+     * an otherwise-mandatory token, such as for {@code asChecked}) is never gated by this flag.
+     * Seeded from the {@code groovy.classtag.preemption.disable} system property; false (the
+     * default) honours declared intent.
+     */
+    private boolean classTagPreemptionDisabled = getBooleanSafe("groovy.classtag.preemption.disable");
+
+    /**
      * If set to true recompilation is enabled.
      */
     private boolean recompileGroovySource;
@@ -394,6 +464,28 @@ public class CompilerConfiguration {
      * Options for optimizations (empty map by default).
      */
     private Map<String, Boolean> optimizationOptions;
+
+    /**
+     * Language-compatibility flag (GROOVY-11792): when {@code true} (the default),
+     * for-in loop variables shared with closures, lambdas, or anonymous inner
+     * classes receive a fresh {@link groovy.lang.Reference} each iteration.
+     * Classic {@code for} / {@code while} loops are unaffected. Independent of
+     * {@link #getOptimizationOptions()} (including {@code "all"} → false).
+     *
+     * @see #isForInPerIterationCaptureEnabled()
+     * @see #setForInPerIterationCaptureEnabled(boolean)
+     */
+    private boolean forInPerIterationCapture = true;
+
+    /**
+     * The target compile phase: the last phase to be processed when
+     * {@link CompilationUnit#compile()} is called without an explicit phase
+     * (GROOVY-12204). Defaults to {@link Phases#ALL}. An earlier phase, such as
+     * {@link Phases#INSTRUCTION_SELECTION}, gives a check-only compilation
+     * which reports parse, resolution, and static type-checking errors without
+     * generating class files.
+     */
+    private int targetPhase = Phases.ALL;
 
     private final List<CompilationCustomizer> compilationCustomizers = new LinkedList<>();
 
@@ -430,6 +522,14 @@ public class CompilerConfiguration {
      *   <tr><td><code>groovy.target.indy</code></td><td>{@link #getOptimizationOptions}</td></tr>
      *   <tr><td><code>groovy.attach.groovydoc</code></td><td>{@link #getOptimizationOptions}</td></tr>
      *   <tr><td><code>groovy.attach.runtime.groovydoc</code></td><td>{@link #getOptimizationOptions}</td></tr>
+     *   <tr><td><code>groovy.parser.error.recovery</code></td><td>{@link #getOptimizationOptions} / {@link #isErrorRecoveryEnabled}</td></tr>
+     * </table>
+     * </blockquote>
+     * Additional language-compatibility system properties (not optimization options):
+     * <blockquote>
+     * <table summary="Groovy Language Compatibility Properties">
+     *   <tr><th>Property Key</th><th>Related Property Getter</th></tr>
+     *   <tr><td><code>groovy.forin.per.iteration.capture</code></td><td>{@link #isForInPerIterationCaptureEnabled}</td></tr>
      * </table>
      * </blockquote>
      */
@@ -446,11 +546,17 @@ public class CompilerConfiguration {
         setTargetDirectorySafe(getSystemPropertySafe("groovy.target.directory"));
         setTargetBytecodeIfValid(getSystemPropertySafe("groovy.target.bytecode", getJavaVersion()));
         defaultScriptExtension = getSystemPropertySafe("groovy.default.scriptExtension", ".groovy");
+        forInPerIterationCapture = getBooleanSafe("groovy.forin.per.iteration.capture", true); // GROOVY-11792
 
         optimizationOptions = new HashMap<>(4);
-        handleOptimizationOption(INVOKEDYNAMIC,     getSystemPropertySafe("groovy.target.indy", "true"));
+        /* GRECLIPSE edit
+        handleOptimizationOption(INVOKEDYNAMIC, getSystemPropertySafe("groovy.target.indy", "true"));
+        */
+        if (!getBooleanSafe("groovy.target.indy", true)) optimizationOptions.put(INVOKEDYNAMIC,Boolean.FALSE);
+        // GRECLIPSE end
         handleOptimizationOption(GROOVYDOC,         getSystemPropertySafe("groovy.attach.groovydoc"        ));
         handleOptimizationOption(RUNTIME_GROOVYDOC, getSystemPropertySafe("groovy.attach.runtime.groovydoc"));
+        handleOptimizationOption(ERROR_RECOVERY,    getSystemPropertySafe("groovy.parser.error.recovery"   ));
 
         if (getBooleanSafe("groovy.mem.stub")) {
             jointCompilationOptions = new HashMap<>(2);
@@ -490,13 +596,16 @@ public class CompilerConfiguration {
         setRecompileGroovySource(configuration.getRecompileGroovySource());
         setMinimumRecompilationInterval(configuration.getMinimumRecompilationInterval());
         setTargetBytecode(configuration.getTargetBytecode());
+        setTargetPhase(configuration.getTargetPhase());
         setPreviewFeatures(configuration.isPreviewFeatures());
         setDefaultScriptExtension(configuration.getDefaultScriptExtension());
         setSourceEncoding(configuration.getSourceEncoding());
         setPluginFactory(configuration.getPluginFactory());
         setDisabledGlobalASTTransformations(configuration.getDisabledGlobalASTTransformations());
         setScriptExtensions(new LinkedHashSet<>(configuration.getScriptExtensions()));
+        setClassTagPreemptionDisabled(configuration.isClassTagPreemptionDisabled());
         setOptimizationOptions(new HashMap<>(configuration.getOptimizationOptions()));
+        setForInPerIterationCaptureEnabled(configuration.isForInPerIterationCaptureEnabled());
         setBytecodePostprocessor(configuration.getBytecodePostprocessor());
 
         Map<String, Object> jointCompilationOptions = configuration.getJointCompilationOptions();
@@ -552,6 +661,7 @@ public class CompilerConfiguration {
      *   <tr><td><code>groovy.recompile</code></td><td>{@link #getRecompileGroovySource}</td></tr>
      *   <tr><td><code>groovy.recompile.minimumInterval</code></td><td>{@link #getMinimumRecompilationInterval}</td></tr>
      *   <tr><td><code>groovy.disabled.global.ast.transformations</code></td><td>{@link #getDisabledGlobalASTTransformations}</td></tr>
+     *   <tr><td><code>groovy.forin.per.iteration.capture</code></td><td>{@link #isForInPerIterationCaptureEnabled}</td></tr>
      * </table>
      * </blockquote>
      *
@@ -897,6 +1007,32 @@ public class CompilerConfiguration {
     }
 
     /**
+     * Whether {@link groovy.transform.stc.ClassTag @ClassTag} preemption is disabled globally
+     * under static compilation (GROOVY-12115). Preemption requires the API author's declared
+     * intent ({@code @ClassTag(preempt=true)}) and is contained to the declaring class; this flag
+     * lets the consuming build veto every preemptive upgrade anyway. Additive injection, such as
+     * for {@code asChecked}, is never gated by this flag. False (the default) honours declared
+     * intent.
+     *
+     * @return whether preemption is disabled
+     * @since 6.0.0
+     */
+    public boolean isClassTagPreemptionDisabled() {
+        return classTagPreemptionDisabled;
+    }
+
+    /**
+     * Disables (or re-enables) {@link groovy.transform.stc.ClassTag @ClassTag} preemption
+     * globally under static compilation (GROOVY-12115).
+     *
+     * @param classTagPreemptionDisabled whether to disable preemption
+     * @since 6.0.0
+     */
+    public void setClassTagPreemptionDisabled(final boolean classTagPreemptionDisabled) {
+        this.classTagPreemptionDisabled = classTagPreemptionDisabled;
+    }
+
+    /**
      * Returns the default file extension used for generated scripts.
      *
      * @return the default script extension
@@ -1045,7 +1181,8 @@ public class CompilerConfiguration {
      * Sets the optimization options for this configuration.
      * No entry or a true for that entry means to enable that optimization,
      * a false means the optimization is disabled.
-     * Valid keys are "all" and "int".
+     * Valid keys include {@code "all"}, {@code "int"}, {@link #INVOKEDYNAMIC},
+     * {@link #GROOVYDOC}, and {@link #RUNTIME_GROOVYDOC}.
      * @param options the options.
      * @throws IllegalArgumentException if the options are null
      */
@@ -1124,7 +1261,10 @@ public class CompilerConfiguration {
      * Enabled by default since Groovy 4. Can be disabled by setting
      * the system property {@code groovy.target.indy} to {@code false}
      * or by setting the {@code indy} optimization option to {@code false}.
-     * The ability to disable may be removed in a future version.
+     * Disabling indy emits classic call-site bytecode that requires the
+     * optional {@code groovy-callsite} module on the compile and runtime
+     * classpaths (see GROOVY-11158). The ability to disable may be removed
+     * in a future version.
      */
     public boolean isIndyEnabled() {
         return !Boolean.FALSE.equals(getOptimizationOptions().get(INVOKEDYNAMIC));
@@ -1142,5 +1282,102 @@ public class CompilerConfiguration {
      */
     public boolean isRuntimeGroovydocEnabled() {
         return Boolean.TRUE.equals(getOptimizationOptions().get(RUNTIME_GROOVYDOC));
+    }
+
+    /**
+     * Checks if ANTLR parser error recovery is enabled.
+     * <p>
+     * Disabled by default. Enable via {@link #ERROR_RECOVERY} or the
+     * {@code groovy.parser.error.recovery} system property. Intended for IDE
+     * editing (multiple syntax diagnostics per pass). Leave off for production
+     * compilation: fail-fast is cheaper and avoids building partial trees.
+     * </p>
+     *
+     * @return {@code true} if parser error recovery is enabled
+     * @since 6.0.0
+     */
+    public boolean isErrorRecoveryEnabled() {
+        return Boolean.TRUE.equals(getOptimizationOptions().get(ERROR_RECOVERY));
+    }
+
+    /**
+     * Checks if per-iteration capture of for-in (enhanced for-each) loop
+     * variables is enabled (GROOVY-11792). Classic {@code for} and
+     * {@code while} loops are not affected by this flag.
+     * <p>
+     * This is a language-compatibility switch (not a performance optimization)
+     * and is independent of {@link #getOptimizationOptions()}. Enabled by
+     * default. Disable via system property {@code groovy.forin.per.iteration.capture=false}
+     * or {@link #setForInPerIterationCaptureEnabled(boolean) setForInPerIterationCaptureEnabled(false)},
+     * which restores the historical behaviour where a single shared
+     * {@link groovy.lang.Reference} is updated across for-in iterations.
+     *
+     * @return {@code true} if each for-in iteration should allocate a fresh
+     *         reference for loop variables shared with closures, lambdas, or
+     *         anonymous inner classes
+     * @see #setForInPerIterationCaptureEnabled(boolean)
+     */
+    public boolean isForInPerIterationCaptureEnabled() {
+        return forInPerIterationCapture;
+    }
+
+    /**
+     * Enables or disables per-iteration capture of for-in (enhanced for-each)
+     * loop variables shared with closures, lambdas, or anonymous inner classes
+     * (GROOVY-11792). Classic {@code for} and {@code while} loops are not
+     * affected. Default is {@code true}. Setting {@code false} restores the
+     * historical single shared {@link groovy.lang.Reference} across iterations.
+     *
+     * @param forInPerIterationCapture {@code true} to allocate a fresh reference each
+     *        for-in iteration for shared loop variables
+     * @see #isForInPerIterationCaptureEnabled()
+     */
+    public void setForInPerIterationCaptureEnabled(final boolean forInPerIterationCapture) {
+        this.forInPerIterationCapture = forInPerIterationCapture;
+    }
+
+    /**
+     * Gets the target compile phase: the last phase to be processed when
+     * {@link CompilationUnit#compile()} is called without an explicit phase
+     * (GROOVY-12204). Defaults to {@link Phases#ALL}.
+     *
+     * @return the target phase number, one of the {@link Phases} constants
+     * @see #setTargetPhase(int)
+     * @since 6.0.0
+     */
+    public int getTargetPhase() {
+        return targetPhase;
+    }
+
+    /**
+     * Sets the target compile phase: the last phase to be processed when
+     * {@link CompilationUnit#compile()} is called without an explicit phase
+     * (GROOVY-12204). Values outside
+     * the range of the {@link Phases} constants are clamped into range.
+     * Setting {@link Phases#INSTRUCTION_SELECTION} gives a check-only
+     * compilation, as used by the {@code groovyc --check} option: parse,
+     * resolution, and static type-checking errors are reported but no class
+     * files are generated. Callers that pass an explicit phase to
+     * {@link CompilationUnit#compile(int)}, such as the AST browser, are
+     * unaffected by this setting.
+     *
+     * @param targetPhase the target phase number, one of the {@link Phases} constants
+     * @see #getTargetPhase()
+     * @since 6.0.0
+     */
+    public void setTargetPhase(final int targetPhase) {
+        this.targetPhase = Math.max(Phases.INITIALIZATION, Math.min(targetPhase, Phases.ALL));
+    }
+
+    /**
+     * Convenience overload of {@link #setTargetPhase(int)} taking the
+     * {@link CompilePhase} enum, e.g. for configuration scripts:
+     * {@code configuration.targetPhase = CompilePhase.INSTRUCTION_SELECTION}.
+     *
+     * @param targetPhase the target phase
+     * @since 6.0.0
+     */
+    public void setTargetPhase(final CompilePhase targetPhase) {
+        setTargetPhase(targetPhase.getPhaseNumber());
     }
 }

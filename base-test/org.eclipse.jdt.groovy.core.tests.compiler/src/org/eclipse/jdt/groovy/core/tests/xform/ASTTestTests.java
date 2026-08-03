@@ -1,5 +1,5 @@
 /*
- * Copyright 2009-2021 the original author or authors.
+ * Copyright 2009-2026 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -106,15 +106,15 @@ public final class ASTTestTests extends GroovyCompilerTestSuite {
     }
 
     @Test // GROOVY-10199
-    public void testASTTest5() throws Exception {
-        java.net.URL bundleEntry = Platform.getBundle("org.eclipse.jdt.groovy.core.tests.compiler").getEntry("astTransformations/transforms.jar");
+    public void testASTTest5() throws Exception { // https://github.com/groovy/groovy-core/tree/master/src/examples/transforms/local
+        var bundleEntry = Platform.getBundle("org.eclipse.jdt.groovy.core.tests.compiler").getEntry("astTransformations/transforms.jar");
         cpAdditions = new String[] {FileLocator.toFileURL(bundleEntry).getPath()};
 
         //@formatter:off
         String[] sources = {
             "Main.groovy",
             "@groovy.transform.ASTTest(value={\n" +
-            "  print examples.local.LoggingExample\n" + // Cannot get property 'local' on null object
+            "  print examples.transforms.local.WithLogging\n" + // Cannot get property 'local' on null object
             "})\n" +
             "class Main {\n" +
             "  static main(args) {\n" +

@@ -283,7 +283,7 @@ public class GroovyLanguageSupport implements LanguageSupport {
         if ((compilerOptions.groovyFlags & CompilerOptions.InvokeDynamic) != 0) {
             config.getOptimizationOptions().putIfAbsent(CompilerConfiguration.INVOKEDYNAMIC, Boolean.TRUE);
         }
-        if (Boolean.TRUE.equals(config.getOptimizationOptions().get(CompilerConfiguration.INVOKEDYNAMIC))) {
+        if (config.isIndyEnabled()) {
             if (config.getTargetBytecode().compareTo(CompilerConfiguration.JDK7) < 0) {
                 config.setTargetBytecode(CompilerConfiguration.JDK7);
             }

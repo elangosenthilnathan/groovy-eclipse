@@ -54,12 +54,12 @@ import org.codehaus.groovy.ast.FieldNode;
 import org.codehaus.groovy.ast.GenericsType;
 import org.codehaus.groovy.ast.ImmutableClassNode;
 import org.codehaus.groovy.ast.ImportNode;
-import org.codehaus.groovy.ast.MultipleAssignmentMetadata;
 import org.codehaus.groovy.ast.InnerClassNode;
 import org.codehaus.groovy.ast.IntersectionTypeClassNode;
 import org.codehaus.groovy.ast.MethodNode;
 import org.codehaus.groovy.ast.ModifierNode;
 import org.codehaus.groovy.ast.ModuleNode;
+import org.codehaus.groovy.ast.MultipleAssignmentMetadata;
 import org.codehaus.groovy.ast.NodeMetaDataHandler;
 import org.codehaus.groovy.ast.PackageNode;
 import org.codehaus.groovy.ast.Parameter;
@@ -127,11 +127,11 @@ import org.codehaus.groovy.control.CompilePhase;
 import org.codehaus.groovy.control.ModuleImportHelper;
 import org.codehaus.groovy.control.SourceUnit;
 import org.codehaus.groovy.control.messages.SyntaxErrorMessage;
-import org.codehaus.groovy.transform.AsyncTransformHelper;
 import org.codehaus.groovy.runtime.StringGroovyMethods;
 import org.codehaus.groovy.syntax.Numbers;
 import org.codehaus.groovy.syntax.SyntaxException;
 import org.codehaus.groovy.syntax.Types;
+import org.codehaus.groovy.transform.AsyncTransformHelper;
 import groovyjarjarasm.asm.Opcodes;
 
 import java.io.BufferedReader;
@@ -186,8 +186,15 @@ public class AstBuilder extends GroovyParserBaseVisitor<Object> {
 
         this.lexer = new GroovyLangLexer(charStream);
         this.parser = new GroovyLangParser(new CommonTokenStream(this.lexer));
+
+        // Opt-in recovery (CompilerConfiguration.ERROR_RECOVERY): resync after syntax
+        // errors so IDEs can collect multiple diagnostics in one pass. Default is fail-fast.
+        // Multi-error truth for hosts is ErrorCollector; recovery may still yield a partial tree.
+        this.errorRecovery = sourceUnit.getConfiguration().isErrorRecoveryEnabled();
+        /* GRECLIPSE edit
+        this.parser.setErrorHandler(DescriptiveErrorStrategy.create(charStream, this.errorRecovery));
+        */
         this.parser.setErrorHandler(new DescriptiveErrorStrategy(charStream) {
-            // GRECLIPSE add
             @Override
             protected String escapeWSAndQuote(final String string) { int cp;
                 if (string.length() == 1 && (Character.isIdentifierIgnorable(cp = string.codePointAt(0)) ||
@@ -196,9 +203,8 @@ public class AstBuilder extends GroovyParserBaseVisitor<Object> {
                 }
                 return super.escapeWSAndQuote(string);
             }
-            // GRECLIPSE end
         });
-
+        // GRECLIPSE end
         this.groovydocManager = new GroovydocManager(groovydocEnabled, runtimeGroovydocEnabled);
         this.tryWithResourcesASTTransformation = new TryWithResourcesASTTransformation(this);
         // GRECLIPSE add
@@ -324,8 +330,30 @@ public class AstBuilder extends GroovyParserBaseVisitor<Object> {
         try {
             return (ModuleNode) this.visit(this.buildCST());
         } catch (Throwable t) {
-            throw convertException(t);
+            // convertException is a no-op for an existing CompilationFailedException and
+            // otherwise records (recovery) or fatally fails (default) before wrapping.
+            // Under recovery, return the partial module only when diagnostics were actually
+            // recorded — an empty collector with a CFE would otherwise look like silent success
+            // (belt-and-braces guard suggested in PR review).
+            CompilationFailedException cfe = convertException(t);
+            if (shouldReturnPartialModuleOnFailure()) {
+                return this.moduleNode;
+            }
+            throw cfe;
         }
+    }
+
+    /**
+     * Whether recovery should return the partially built {@link #moduleNode} after a
+     * {@link CompilationFailedException} instead of rethrowing.
+     * <p>
+     * Requires both recovery mode and at least one recorded diagnostic. An empty
+     * collector with recovery enabled is treated as a real failure (rethrow) so a
+     * programming error in an error path cannot surface as silent success.
+     * </p>
+     */
+    private boolean shouldReturnPartialModuleOnFailure() {
+        return errorRecovery && sourceUnit.getErrorCollector().hasErrors();
     }
 
     @Override
@@ -705,20 +733,7 @@ public class AstBuilder extends GroovyParserBaseVisitor<Object> {
         visitAnnotationsOpt(ctx.annotationsOpt()).forEach(forStatement::addStatementAnnotation);
 
         if (isForAwait) {
-            // Transform collection expression: wrap in AsyncSupport.toIterable()
-            // and wrap the loop in try/finally to ensure cleanup on break/exception
-            Expression original = forStatement.getCollectionExpression();
-            String tempVar = "__forAwaitSource" + ctx.hashCode();
-            Expression toIterableCall = AsyncTransformHelper.buildToIterableCall(original);
-
-            // var $temp = AsyncSupport.toIterable(original)
-            Statement declStmt = stmt(declX(varX(tempVar), toIterableCall));
-            forStatement.setCollectionExpression(varX(tempVar));
-
-            // try { for (...) { body } } finally { AsyncSupport.closeIterable($temp) }
-            Statement finallyStmt = stmt(AsyncTransformHelper.buildCloseIterableCall(varX(tempVar)));
-            TryCatchStatement tryCatch = new TryCatchStatement(forStatement, finallyStmt);
-            return configureAST(block(declStmt, tryCatch), ctx);
+            return configureAST(AsyncTransformHelper.wrapForAwaitLoop(forStatement), ctx);
         }
 
         return forStatement;
@@ -3453,39 +3468,7 @@ public class AstBuilder extends GroovyParserBaseVisitor<Object> {
     @Override
     public Expression visitAsyncClosureExprAlt(final AsyncClosureExprAltContext ctx) {
         ClosureExpression closure = this.visitClosureOrLambdaExpression(ctx.closureOrLambdaExpression());
-        boolean hasYieldReturn = AsyncTransformHelper.containsYieldReturn(closure.getCode());
-        boolean hasDefer = AsyncTransformHelper.containsDefer(closure.getCode());
-
-        if (hasDefer) {
-            Statement wrappedBody = AsyncTransformHelper.wrapWithDeferScope(closure.getCode());
-            ClosureExpression newClosure = new ClosureExpression(closure.getParameters(), wrappedBody);
-            newClosure.setVariableScope(closure.getVariableScope());
-            newClosure.setSourcePosition(closure);
-            closure = newClosure;
-        }
-
-        if (hasYieldReturn) {
-            // Inject synthetic $__asyncGen__ as first parameter
-            Parameter genParam = AsyncTransformHelper.createGenParam();
-            Parameter[] existingParams = closure.getParameters();
-            boolean hasUserParams = existingParams != null && existingParams.length > 0;
-            Parameter[] newParams;
-            if (hasUserParams) {
-                newParams = new Parameter[existingParams.length + 1];
-                newParams[0] = genParam;
-                System.arraycopy(existingParams, 0, newParams, 1, existingParams.length);
-            } else {
-                newParams = new Parameter[]{genParam};
-            }
-            ClosureExpression genClosure = new ClosureExpression(newParams, closure.getCode());
-            genClosure.setVariableScope(closure.getVariableScope());
-            genClosure.setSourcePosition(closure);
-            return configureAST(AsyncTransformHelper.buildAsyncGeneratorCall(
-                    new ArgumentListExpression(genClosure)), ctx);
-        } else {
-            return configureAST(AsyncTransformHelper.buildAsyncCall(
-                    new ArgumentListExpression(closure)), ctx);
-        }
+        return configureAST(AsyncTransformHelper.transformAsyncClosure(closure), ctx);
     }
 
     @Override
@@ -4812,29 +4795,21 @@ public class AstBuilder extends GroovyParserBaseVisitor<Object> {
 
     @Override
     public Statement visitBlockStatement(final BlockStatementContext ctx) {
-        if (asBoolean(ctx.localVariableDeclaration())) {
-            return configureAST(this.visitLocalVariableDeclaration(ctx.localVariableDeclaration()), ctx);
+        Object astNode = this.visit(ctx.statement());
+
+        if (null == astNode) {
+            return null;
         }
 
-        if (asBoolean(ctx.statement())) {
-            Object astNode = this.visit(ctx.statement()); //this.configureAST((Statement) this.visit(ctx.statement()), ctx);
-
-            if (null == astNode) {
-                return null;
-            }
-
-            if (astNode instanceof Statement) {
-                return (Statement) astNode;
-            } else if (astNode instanceof MethodNode) {
-                throw createParsingFailedException("Method definition not expected here", ctx);
-            } else if (astNode instanceof ImportNode) {
-                throw createParsingFailedException("Import statement not expected here", ctx);
-            } else {
-                throw createParsingFailedException("The statement(" + astNode.getClass() + ") not expected here", ctx);
-            }
+        if (astNode instanceof Statement) {
+            return (Statement) astNode;
+        } else if (astNode instanceof MethodNode) {
+            throw createParsingFailedException("Method definition not expected here", ctx);
+        } else if (astNode instanceof ImportNode) {
+            throw createParsingFailedException("Import statement not expected here", ctx);
+        } else {
+            throw createParsingFailedException("The statement(" + astNode.getClass() + ") not expected here", ctx);
         }
-
-        throw createParsingFailedException("Unsupported block statement: " + ctx.getText(), ctx);
     }
 
     @Override
@@ -5362,7 +5337,6 @@ public class AstBuilder extends GroovyParserBaseVisitor<Object> {
         if (t instanceof SyntaxException) {
             this.collectSyntaxError((SyntaxException) t);
         } else if (t instanceof GroovySyntaxError groovySyntaxError) {
-
             this.collectSyntaxError(
                     new SyntaxException(
                             groovySyntaxError.getMessage(),
@@ -5380,7 +5354,14 @@ public class AstBuilder extends GroovyParserBaseVisitor<Object> {
     }
 
     private void collectSyntaxError(final SyntaxException e) {
-        sourceUnit.getErrorCollector().addFatalError(new SyntaxErrorMessage(e, sourceUnit));
+        SyntaxErrorMessage message = new SyntaxErrorMessage(e, sourceUnit);
+        if (errorRecovery) {
+            // Accumulate diagnostics so ANTLR resync can surface further errors in one pass.
+            // Fail-fast still uses addFatalError so the first error stops compilation immediately.
+            sourceUnit.getErrorCollector().addErrorAndContinue(message);
+        } else {
+            sourceUnit.getErrorCollector().addFatalError(message);
+        }
     }
 
     private void collectException(final Exception e) {
@@ -5461,6 +5442,8 @@ public class AstBuilder extends GroovyParserBaseVisitor<Object> {
     private final LocationSupport locationSupport;
     // GRECLIPSE add
     private final TryWithResourcesASTTransformation tryWithResourcesASTTransformation;
+    /** {@code true} when {@link org.codehaus.groovy.control.CompilerConfiguration#ERROR_RECOVERY} is enabled. */
+    private final boolean errorRecovery;
 
     private final List<ClassNode> classNodeList = new ArrayList<>();
     private final Deque<ClassNode> classNodeStack = new ArrayDeque<>();

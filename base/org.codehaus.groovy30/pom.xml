@@ -18,6 +18,9 @@
         <artifactId>tycho-compiler-plugin</artifactId>
         <version>${tycho-version}</version>
         <configuration>
+          <compilerArgs>
+            <arg>-indy</arg>
+          </compilerArgs>
           <compilerId>groovy-eclipse-compiler</compilerId>
           <deriveReleaseCompilerArgumentFromTargetLevel>false</deriveReleaseCompilerArgumentFromTargetLevel>
           <excludeResources>

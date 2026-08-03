@@ -1,5 +1,5 @@
 /*
- * Copyright 2009-2025 the original author or authors.
+ * Copyright 2009-2026 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -1621,10 +1621,31 @@ public final class DeclarationInferencingTests extends InferencingTestSuite {
     }
 
     @Test
-    public void testJavaInterfaceMethodOverride() {
-        String contents = "{-> metaClass = null}\n";
+    public void testJavaInterfaceMethodOverride1() {
+        String contents = "metaClass\n";
 
         assertDeclaringType(contents, "metaClass", "groovy.lang.GroovyObjectSupport");
+    }
+
+    @Test
+    public void testJavaInterfaceMethodOverride2() {
+        String contents = "metaClass = null\n";
+
+        assertDeclaringType(contents, "metaClass", "groovy.lang.GroovyObjectSupport");
+    }
+
+    @Test
+    public void testJavaInterfaceMethodOverride3() {
+        String contents = "{-> metaClass}\n"; // returns a ClosureMetaClass instance
+
+        assertDeclaringType(contents, "metaClass", "groovy.lang.GroovyObjectSupport");
+    }
+
+    @Test
+    public void testJavaInterfaceMethodOverride4() {
+        String contents = "{-> metaClass = null}\n";
+
+        assertDeclaringType(contents, "metaClass", isAtLeastGroovy(60) ? "groovy.lang.Closure" : "groovy.lang.GroovyObjectSupport");
     }
 
     @Test // https://github.com/groovy/groovy-eclipse/issues/967

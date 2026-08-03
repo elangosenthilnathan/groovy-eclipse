@@ -108,7 +108,7 @@ public class ClassHelper {
 
     public static final ClassNode
             OBJECT_TYPE = makeCached(Object.class),
-            CLOSURE_TYPE = makeWithoutCaching(Closure.class),
+            CLOSURE_TYPE = makeCached(Closure.class),
             GSTRING_TYPE = makeCached(GString.class),
             RANGE_TYPE = makeWithoutCaching(Range.class),
             PATTERN_TYPE = makeCached(Pattern.class),
@@ -238,6 +238,7 @@ public class ClassHelper {
             BigDecimal_TYPE,
             BigInteger_TYPE,
             CLONEABLE_TYPE,
+            CLOSURE_TYPE,
             DEPRECATED_TYPE,
             ELEMENT_TYPE_TYPE,
             GSTRING_TYPE,

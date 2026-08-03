@@ -23,6 +23,8 @@ import static org.junit.Assert.fail;
 import static org.junit.Assume.assumeTrue;
 
 import java.io.File;
+import java.util.Arrays;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
 
@@ -2325,6 +2327,25 @@ public final class GroovySimpleTests extends GroovyCompilerTestSuite {
         //@formatter:on
 
         runConformTest(sources, "Bar");
+    }
+
+    @Test // GROOVY-12203
+    public void testOverriding_GenericMethod() {
+        //@formatter:off
+        String[] sources = {
+            "Bar.java",
+            "interface Bar {\n" +
+            "  <T extends Number> void m(java.util.Optional<? super T> opt);\n" +
+            "}\n",
+
+            "Foo.groovy",
+            "class Foo implements Bar { \n" +
+            "  @Override <T extends Number> void m(Optional<? super T> opt) {}\n" +
+            "}\n",
+        };
+        //@formatter:on
+
+        runNegativeTest(sources, "");
     }
 
     @Test
@@ -6736,19 +6757,7 @@ public final class GroovySimpleTests extends GroovyCompilerTestSuite {
         };
         //@formatter:on
 
-        String old = System.getProperty("groovy.target.indy");
-        try {
-            System.setProperty("groovy.target.indy", "false");
-
-            String fail = Runtime.version().feature() > 8 ? "failed" : "tried";
-            runConformTest(sources, "", "java.lang.IllegalAccessError: " + fail + " to access class q.Bar from class p.Foo");
-        } finally {
-            if (old == null) {
-                System.clearProperty("groovy.target.indy");
-            } else {
-                System.setProperty("groovy.target.indy", old);
-            }
-        }
+        runConformTest(sources, "", "java.lang.IllegalAccessError: failed to access class q.Bar from class p.Foo");
     }
 
     @Test
@@ -6779,12 +6788,25 @@ public final class GroovySimpleTests extends GroovyCompilerTestSuite {
     }
 
     @Test
-    public void testConfigScriptPrecedence() {
+    public void testConfigScriptPrecedence() throws Exception {
         Map<String, String> options = getCompilerOptions();
         options.put(CompilerOptions.OPTIONG_GroovyCompilerConfigScript, createScript("config.groovy",
             "configuration.optimizationOptions.indy = false\n"
         ).getAbsolutePath());
         options.put(CompilerOptions.OPTIONG_GroovyFlags, Integer.toString(CompilerOptions.InvokeDynamic));
+
+        if (isAtLeastGroovy(60)) {
+            try (var classLoader = new groovy.lang.GroovyClassLoader()) {
+                String version = groovy.lang.GroovySystem.getVersion();
+                cpAdditions = Arrays.stream(
+                    groovy.grape.Grape.resolve(
+                        new HashMap<>(Map.of("classLoader", classLoader)), // <-- resolve modifies
+                        Map.of("group", "org.apache.groovy", "module", "groovy-callsite", "version", version)
+                    )
+                )
+                .map(uri -> uri.getPath()).toArray(String[]::new);
+            }
+        }
 
         //@formatter:off
         String[] sources = {

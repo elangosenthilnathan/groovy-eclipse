@@ -597,7 +597,9 @@ public class SimpleTypeLookup implements ITypeLookupExtension {
                 decl = candidate;
                 type = getTypeFromDeclaration(decl);
                 resolvedDeclaringType = getDeclaringTypeFromDeclaration(decl, declaringType);
-                if (!VariableScope.CLOSURE_CLASS_NODE.equals(resolvedDeclaringType)) variableInfo = null;
+                boolean probesContext = VariableScope.CLOSURE_CLASS_NODE.equals(resolvedDeclaringType) &&
+                    var.getName().matches("delegate|owner|super|this(Object)?|get(Delegate|Owner|ThisObject)");
+                if (!probesContext) variableInfo = null;
             } else {
                 type = VariableScope.OBJECT_CLASS_NODE;
                 confidence = TypeConfidence.UNKNOWN;

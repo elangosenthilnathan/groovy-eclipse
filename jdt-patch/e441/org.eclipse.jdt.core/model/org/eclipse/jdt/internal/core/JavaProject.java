@@ -2224,7 +2224,7 @@ public class JavaProject
 			Util.log(e, "JavaProject.setGroovyOptions failed"); //$NON-NLS-1$
 		}
 		options.put(CompilerOptions.OPTIONG_BuildGroovyFiles, CompilerOptions.DISABLED);
-		options.put(CompilerOptions.OPTIONG_GroovyFlags, String.valueOf(0));
+		options.put(CompilerOptions.OPTIONG_GroovyFlags,"0"); //$NON-NLS-1$
 	}
 	// GROOVY end
 

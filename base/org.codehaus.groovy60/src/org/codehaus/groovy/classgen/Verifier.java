@@ -84,6 +84,7 @@ import org.codehaus.groovy.classgen.asm.BytecodeHelper;
 import org.codehaus.groovy.classgen.asm.MopWriter;
 import org.codehaus.groovy.classgen.asm.OptimizingStatementWriter.ClassNodeSkip;
 import org.codehaus.groovy.classgen.asm.WriterController;
+import org.codehaus.groovy.control.messages.WarningMessage;
 import org.codehaus.groovy.reflection.ClassInfo;
 import org.codehaus.groovy.syntax.RuntimeParserException;
 import org.codehaus.groovy.syntax.Token;
@@ -103,6 +104,7 @@ import java.util.Deque;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.ListIterator;
 import java.util.Map;
@@ -492,7 +494,7 @@ public class Verifier implements GroovyClassVisitor, Opcodes {
                                         one += via.apply(i);
                                         two += via.apply(j);
                                         if (Traits.isTrait(in)) { // GROOVY-11508
-                                            cn.getModule().getContext().addWarning("The trait " + in.getNameWithoutPackage() +
+                                            cn.getModule().getContext().addWarning(WarningMessage.LIKELY_ERRORS, "The trait " + in.getNameWithoutPackage() +
                                                 " is implemented more than once with different arguments: " + one + " and " + two, cn);
                                         } else {
                                             throw new RuntimeParserException("The interface " + in.getNameWithoutPackage() +
@@ -1244,7 +1246,7 @@ public class Verifier implements GroovyClassVisitor, Opcodes {
         message = message.substring(message.indexOf(' ') + 1); // strip return type
         message = String.format("Property %s cannot override final method %s of class %s", pn.getName(), message, mn.getDeclaringClass().getName());
 
-        classNode.getModule().getContext().addWarning(message, pn);
+        classNode.getModule().getContext().addWarning(WarningMessage.LIKELY_ERRORS, message, pn);
     }
 
     private boolean methodNeedsReplacement(final MethodNode mn, final Consumer<MethodNode> cannotReplace) {
@@ -1498,7 +1500,7 @@ public class Verifier implements GroovyClassVisitor, Opcodes {
             } else {
                 String warning = "Default argument(s) specify duplicate constructor: " +
                     MethodNodeUtils.methodDescriptor(old,true).replace("<init>",type.getNameWithoutPackage());
-                type.getModule().getContext().addWarning(warning, method.getLineNumber() > 0 ? method : type);
+                type.getModule().getContext().addWarning(WarningMessage.LIKELY_ERRORS, warning, method.getLineNumber() > 0 ? method : type);
             }
         });
     }
@@ -1954,8 +1956,11 @@ public class Verifier implements GroovyClassVisitor, Opcodes {
      * @param classNode the class being enhanced
      */
     protected void addCovariantMethods(final ClassNode classNode) {
-        Map<String, MethodNode> absInterfaceMethods = new HashMap<>();
-        Map<String, MethodNode> allInterfaceMethods = new HashMap<>();
+        // insertion-ordered: these maps are iterated to decide which bridge methods
+        // to add and in what order, so hash order would put the generated methods in
+        // an arbitrary order in the class file rather than the order they are found
+        Map<String, MethodNode> absInterfaceMethods = new LinkedHashMap<>();
+        Map<String, MethodNode> allInterfaceMethods = new LinkedHashMap<>();
         Set<ClassNode> allInterfaces = getAllInterfaces(classNode);
         allInterfaces.remove(classNode);
 
@@ -1994,7 +1999,7 @@ public class Verifier implements GroovyClassVisitor, Opcodes {
             }
         }
 
-        Map<String, MethodNode> methodsToAdd = new HashMap<>();
+        Map<String, MethodNode> methodsToAdd = new LinkedHashMap<>();
         Map<String, ClassNode > genericsSpec = Collections.emptyMap();
         addCovariantMethods(classNode, declaredMethods, absInterfaceMethods, methodsToAdd, genericsSpec);
 

@@ -310,7 +310,7 @@ final class EvaluationEngineTests extends GroovyEclipseTestSuite {
             IEvaluationResult result = evaluate('x(', thread)
             assert result.hasErrors()
             String report = getErrorMessages(result)[0]
-            assert report.startsWith('Unexpected input: \'x(\'')
+            assert report.startsWith('Unexpected input: \'x(\'') || report.startsWith('Missing \')\'')
         } finally {
             launch.terminate()
         }

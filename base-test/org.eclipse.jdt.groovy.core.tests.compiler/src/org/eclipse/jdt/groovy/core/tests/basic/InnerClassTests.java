@@ -489,6 +489,50 @@ public final class InnerClassTests extends GroovyCompilerTestSuite {
             "----------\n");
     }
 
+    @Test // GROOVY-12188
+    public void testInnerClass13() {
+        //@formatter:off
+        String[] sources = {
+            "Script.groovy",
+            "abstract class A<T> {\n" +
+            "  abstract T value()\n" +
+            "}\n" +
+            "abstract class B<U extends Collection<String>> extends A<U> {\n" +
+            "  static class Inner<V> {\n" +
+            "    void trigger(Optional<V> opt) { opt.map { it } }\n" +
+            "  }\n" +
+            "  U value() {}\n" +
+            "}\n" +
+            "class C extends B<List<String>> {\n" +
+            "}\n" +
+            "assert new C().value() == null\n",
+        };
+        //@formatter:on
+
+        runConformTest(sources);
+    }
+
+    @Test // GROOVY-12188
+    public void testInnerClass14() {
+        //@formatter:off
+        String[] sources = {
+            "Script.groovy",
+            "abstract class A<T> {\n" +
+            "  abstract T value()\n" +
+            "}\n" +
+            "abstract class B<U extends Collection<String>> extends A<U> {\n" +
+            "  static class Inner extends B<List<String>> {\n" +
+            "    def cl = { it }\n" +
+            "  }\n" +
+            "  U value() {}\n" +
+            "}\n" +
+            "assert new B.Inner().value() == null\n",
+        };
+        //@formatter:on
+
+        runConformTest(sources);
+    }
+
     @Test
     public void testAnonymousInnerClass1() {
         //@formatter:off

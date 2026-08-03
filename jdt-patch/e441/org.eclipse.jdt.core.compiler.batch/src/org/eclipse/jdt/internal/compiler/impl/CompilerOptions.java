@@ -2252,8 +2252,8 @@ public class CompilerOptions {
 			if (ENABLED.equals(optionValue)) {
 				this.buildGroovyFiles = 2;
 				this.storeAnnotations = true; // force it on
-				String s = optionsMap.get(OPTIONG_GroovyFlags);
-				if (s != null && !s.trim().isEmpty()) {
+				var s = optionsMap.get(OPTIONG_GroovyFlags);
+				if (s != null && !s.isBlank()) {
 					this.groovyFlags = Integer.parseInt(s);
 				} else {
 					this.groovyFlags = 0;

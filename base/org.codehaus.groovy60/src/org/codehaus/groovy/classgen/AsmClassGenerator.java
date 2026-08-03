@@ -26,12 +26,12 @@ import org.codehaus.groovy.ast.AnnotatedNode;
 import org.codehaus.groovy.ast.AnnotationNode;
 import org.codehaus.groovy.ast.ClassHelper;
 import org.codehaus.groovy.ast.ClassNode;
-import org.codehaus.groovy.ast.CodeVisitorSupport;
 import org.codehaus.groovy.ast.ConstructorNode;
 import org.codehaus.groovy.ast.FieldNode;
 import org.codehaus.groovy.ast.GenericsType;
 import org.codehaus.groovy.ast.InnerClassNode;
 import org.codehaus.groovy.ast.InterfaceHelperClassNode;
+import org.codehaus.groovy.ast.IntersectionTypeClassNode;
 import org.codehaus.groovy.ast.MethodNode;
 import org.codehaus.groovy.ast.ModuleNode;
 import org.codehaus.groovy.ast.PackageNode;
@@ -56,7 +56,6 @@ import org.codehaus.groovy.ast.expr.EmptyExpression;
 import org.codehaus.groovy.ast.expr.Expression;
 import org.codehaus.groovy.ast.expr.FieldExpression;
 import org.codehaus.groovy.ast.expr.GStringExpression;
-import org.codehaus.groovy.ast.IntersectionTypeClassNode;
 import org.codehaus.groovy.ast.expr.LambdaExpression;
 import org.codehaus.groovy.ast.expr.ListExpression;
 import org.codehaus.groovy.ast.expr.MapEntryExpression;
@@ -103,6 +102,7 @@ import org.codehaus.groovy.classgen.asm.MethodCallerMultiAdapter;
 import org.codehaus.groovy.classgen.asm.MopWriter;
 import org.codehaus.groovy.classgen.asm.OperandStack;
 import org.codehaus.groovy.classgen.asm.OptimizingStatementWriter;
+import org.codehaus.groovy.classgen.asm.PeepholeOptimizingMethodVisitor;
 import org.codehaus.groovy.classgen.asm.WriterController;
 import org.codehaus.groovy.classgen.asm.WriterControllerFactory;
 import org.codehaus.groovy.control.SourceUnit;
@@ -117,7 +117,6 @@ import groovyjarjarasm.asm.RecordComponentVisitor;
 import groovyjarjarasm.asm.Type;
 import groovyjarjarasm.asm.TypePath;
 import groovyjarjarasm.asm.TypeReference;
-import groovyjarjarasm.asm.util.TraceMethodVisitor;
 
 import java.io.PrintWriter;
 import java.io.Writer;
@@ -125,14 +124,13 @@ import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.Iterator;
+import java.util.LinkedHashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
-import java.util.TreeMap;
 import java.util.function.Consumer;
 
 import static org.apache.groovy.ast.tools.ClassNodeUtils.getField;
@@ -140,7 +138,6 @@ import static org.apache.groovy.ast.tools.ClassNodeUtils.getNestHost;
 import static org.apache.groovy.ast.tools.ExpressionUtils.isNullConstant;
 import static org.apache.groovy.ast.tools.ExpressionUtils.isSuperExpression;
 import static org.codehaus.groovy.ast.ClassHelper.isClassType;
-import static org.codehaus.groovy.ast.ClassHelper.isFunctionalInterface;
 import static org.codehaus.groovy.ast.ClassHelper.isObjectType;
 import static org.codehaus.groovy.ast.ClassHelper.isPrimitiveBoolean;
 import static org.codehaus.groovy.ast.ClassHelper.isPrimitiveByte;
@@ -280,7 +277,10 @@ public class AsmClassGenerator extends ClassGenerator {
     private static final MethodCaller createPojoWrapperMethod = MethodCaller.newStatic(ScriptBytecodeAdapter.class, "createPojoWrapper");
     private static final MethodCaller createGroovyObjectWrapperMethod = MethodCaller.newStatic(ScriptBytecodeAdapter.class, "createGroovyObjectWrapper");
 
-    private final Map<String,ClassNode> referencedClasses = new HashMap<>();
+    // insertion-ordered: iterated to generate the synthetic class-literal fields and their
+    // accessors, so hash order would place them in an arbitrary order in the class file
+    // rather than the order the class literals were encountered
+    private final Map<String, ClassNode> referencedClasses = new LinkedHashMap<>();
 
     /**
      * Add marker in the bytecode to show source-bytecode relationship.
@@ -430,13 +430,11 @@ public class AsmClassGenerator extends ClassGenerator {
                     MopWriter mopWriter = mopWriterFactory.create(controller);
                     mopWriter.createMopMethods();
                     controller.getCallSiteWriter().generateCallSiteArray();
+                    // GROOVY-12151: after every method (including hoisted bodies added during the
+                    // visit) has claimed its id, render the class's packed-closure dispatch table
+                    controller.getClosureWriter().writePackedDispatcher();
                     createSyntheticStaticFields();
                 }
-            }
-            // GROOVY-10687
-            if (classNode.getOuterClass() == null && classNode.getInnerClasses().hasNext()) {
-                makeNestmateEntries(classNode);
-                moreNestmateEntries(classNode);
             }
             // GROOVY-4649, GROOVY-6750, GROOVY-6808
             for (Iterator<InnerClassNode> it = classNode.getInnerClasses(); it.hasNext(); ) {
@@ -520,64 +518,6 @@ public class AsmClassGenerator extends ClassGenerator {
         classVisitor.visitInnerClass(innerClassInternalName, outerClassInternalName, innerClassName, modifiers);
     }
 
-    private void makeNestmateEntries(final ClassNode classNode) {
-        for (Iterator<InnerClassNode> it = classNode.getInnerClasses(); it.hasNext(); ) {
-            ClassNode innerClass = it.next();
-            classVisitor.visitNestMember(BytecodeHelper.getClassInternalName(innerClass));
-            makeNestmateEntries(innerClass);
-        }
-    }
-
-    private void moreNestmateEntries(final ClassNode classNode) {
-        // edge case: nest host closures-within-closures
-        int[] n = {this.context.getClosureClassIndex()};
-        for (ClassNode innerClass : getInnerClasses()) {
-            if (innerClass instanceof InterfaceHelperClassNode) continue;
-            var toVisit = new TreeMap<String, ClosureExpression>(); // GROOVY-11780
-            var visitor = new CodeVisitorSupport() {
-                private String name = BytecodeHelper.getClassInternalName(innerClass);
-                private void visitNested(final String kind, final ClosureExpression expr) {
-                    String nest = name + "$_" + kind + n[0]++;
-                    classVisitor.visitNestMember(nest);
-                    toVisit.put(nest, expr);
-                }
-
-                /**
-                 * Registers nested closures as additional nest members.
-                 */
-                @Override
-                public  void visitClosureExpression(final ClosureExpression expression) {
-                    visitNested("closure", expression);
-                }
-
-                /**
-                 * Registers statically compiled functional-interface lambdas as nest members.
-                 */
-                @Override
-                public  void visitLambdaExpression(final LambdaExpression expression) {
-                    if (Boolean.TRUE.equals(innerClass.getNodeMetaData(org.codehaus.groovy.transform.sc.StaticCompilationMetadataKeys.STATIC_COMPILE_NODE))
-                            && isFunctionalInterface(expression.getNodeMetaData(org.codehaus.groovy.transform.stc.StaticTypesMarker.PARAMETER_TYPE))) {
-                        visitNested("lambda", expression);
-                    } else {
-                        super.visitLambdaExpression(expression);
-                    }
-                }
-            };
-
-            MethodNode doCall = innerClass.getMethods().get(0);
-            doCall.getCode().visit(visitor);
-
-            while (!toVisit.isEmpty()) {
-                var iter = toVisit.entrySet().iterator(); // take first entry
-                var next = iter.next();
-                iter.remove();
-
-                visitor.name = next.getKey(); // traverse
-                next.getValue().getCode().visit(visitor);
-            }
-        }
-    }
-
     /*
      * See http://docs.oracle.com/javase/specs/jvms/se7/html/jvms-4.html#jvms-4.7.6-300-D.2-5
      * for what flags are allowed depending on the fact we are writing the inner class table
@@ -639,11 +579,14 @@ public class AsmClassGenerator extends ClassGenerator {
             receiver = parameters[0]; // non-static method or inner class ctor
             parameters = Arrays.copyOfRange(parameters, 1, parameters.length);
         }
+
         MethodVisitor mv = classVisitor.visitMethod(
-                node.getModifiers() | (isVargs(parameters) ? ACC_VARARGS : 0), node.getName(),
+                node.getModifiers() | (isVargs(parameters) ? ACC_VARARGS : 0),
+                node.getName(),
                 BytecodeHelper.getMethodDescriptor(node.getReturnType(), parameters),
                 BytecodeHelper.getGenericsMethodSignature(node),
                 buildExceptions(node.getExceptions()));
+
         controller.setMethodVisitor(mv);
         controller.resetLineNumber();
 
@@ -695,11 +638,13 @@ public class AsmClassGenerator extends ClassGenerator {
                 mv.visitMaxs(0, 0);
             } catch (Throwable t) {
                 Writer writer = null;
-                if (mv instanceof TraceMethodVisitor) {
-                    writer = new StringBuilderWriter();
-                    PrintWriter p = new PrintWriter(writer);
-                    ((TraceMethodVisitor) mv).p.print(p);
-                    p.flush();
+                // Method visitors are wrapped by PeepholeOptimizingClassVisitor; unwrap to
+                // reach a TraceMethodVisitor when classgen logging is enabled.
+                StringBuilderWriter buffer = new StringBuilderWriter();
+                PrintWriter printer = new PrintWriter(buffer);
+                if (PeepholeOptimizingMethodVisitor.printTraceBytecode(mv, printer)) {
+                    printer.flush();
+                    writer = buffer;
                 }
                 StringBuilder message = new StringBuilder(64);
                 message.append("ASM reporting processing error for ");
@@ -1453,6 +1398,8 @@ public class AsmClassGenerator extends ClassGenerator {
             callSiteWriter.makeGroovyObjectGetPropertySite(objectExpression, propertyName, pexp.isSafe(), pexp.isImplicitThis());
         } else if (adapter == getProperty && propertyName != null && !pexp.isSpreadSafe()) {
             callSiteWriter.makeGetPropertySite(objectExpression, propertyName, pexp.isSafe(), pexp.isImplicitThis());
+        } else if ((adapter == setProperty || adapter == setGroovyObjectProperty) && propertyName != null && !pexp.isSpreadSafe()) {
+            callSiteWriter.makeSetPropertySite(pexp, objectExpression, propertyName, adapter, adapter == setGroovyObjectProperty); // GROOVY-12138
         } else {
             callSiteWriter.fallbackAttributeOrPropertySite(pexp, objectExpression, propertyName, adapter);
         }

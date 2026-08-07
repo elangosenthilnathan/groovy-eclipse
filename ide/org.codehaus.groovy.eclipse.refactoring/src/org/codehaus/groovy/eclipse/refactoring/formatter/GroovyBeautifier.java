@@ -433,21 +433,11 @@ public class GroovyBeautifier {
                 int tokenType = token.getType();
                 int nextTokenType = nextToken.getType();
 
-                switch (tokenType) {
-                case GroovyTokenTypeBridge.LPAREN:
-                case GroovyTokenTypeBridge.LBRACK:
-                case GroovyTokenTypeBridge.LCURLY:
+                if (tokenType == GroovyTokenTypeBridge.LPAREN || tokenType == GroovyTokenTypeBridge.LBRACK || tokenType == GroovyTokenTypeBridge.LCURLY) {
                     openBrackets.push(tokenType);
-                    break;
-                case GroovyTokenTypeBridge.RPAREN:
-                case GroovyTokenTypeBridge.RBRACK:
-                case GroovyTokenTypeBridge.RCURLY:
-                    if (!openBrackets.isEmpty()) {
-                        openBrackets.pop();
-                    }
-                    break;
-                default:
-                    break;
+                } else if (!openBrackets.isEmpty() && (
+                    tokenType == GroovyTokenTypeBridge.RPAREN || tokenType == GroovyTokenTypeBridge.RBRACK || tokenType == GroovyTokenTypeBridge.RCURLY)) {
+                    openBrackets.pop();
                 }
 
                 boolean removeAllWhitespaces = false;
@@ -456,10 +446,10 @@ public class GroovyBeautifier {
                 // preserve manual column alignment of map entries (e.g. "key   : 1")
                 // and Spock data tables (e.g. "a   | 1"); collapsing this whitespace
                 // to a single space defeats the purpose of the alignment.
-                boolean insideMapLiteral = !openBrackets.isEmpty() && openBrackets.peek() == GroovyTokenTypeBridge.LBRACK;
-                if ((nextTokenType == GroovyTokenTypeBridge.COLON && insideMapLiteral) ||
-                        nextTokenType == GroovyTokenTypeBridge.BOR ||
-                        tokenType == GroovyTokenTypeBridge.BOR) {
+                if (tokenType == GroovyTokenTypeBridge.BOR ||
+                    nextTokenType == GroovyTokenTypeBridge.BOR ||
+                    (nextTokenType == GroovyTokenTypeBridge.COLON &&
+                        openBrackets.peek() == GroovyTokenTypeBridge.LBRACK)) {
                     collapseAllWhitespaces = false;
                 }
 

@@ -347,11 +347,18 @@ public class GroovyUtils {
         importNodes.addAll(moduleNode.getStarImports());
         importNodes.addAll(moduleNode.getStaticImports().values());
         importNodes.addAll(moduleNode.getStaticStarImports().values());
+        importNodes.addAll(getModuleImportNodes(moduleNode)); // GROOVY-11916
 
         // order imports by source position
         Collections.sort(importNodes, Comparator.comparing(ImportNode::getEnd));
 
         return importNodes;
+    }
+
+    public static List<ImportNode> getModuleImportNodes(ModuleNode moduleNode) {
+        List<ImportNode> opt = moduleNode.getNodeMetaData("import.module");
+        if (opt == null) opt = Collections.emptyList();
+        return opt;
     }
 
     public static MethodNode getAnnotationMethod(AnnotationNode node, String methodName) {

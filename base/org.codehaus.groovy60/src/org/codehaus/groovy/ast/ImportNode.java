@@ -141,6 +141,10 @@ public class ImportNode extends AnnotatedNode {
 
         if (!isStatic()) {
             if (isStar()) {
+                // GRECLIPSE add
+                if (!getPackageName().endsWith("."))
+                    return "import module " + getPackageName();
+                // GRECLIPSE end
                 return "import " + getPackageName() + "*";
             } else if (simpleName == null || simpleName.isEmpty()
                     || simpleName.equals(getType().getNameWithoutPackage())) {

@@ -1109,6 +1109,50 @@ final class OrganizeImportsTests extends OrganizeImportsTestSuite {
         doContentsCompareTest(contents)
     }
 
+    @Test // GROOVY-11916
+    void testModuleImport1() {
+        assumeTrue(isParrotParser() && isAtLeastGroovy(60))
+
+        String contents = '''\
+            |import module java.base
+            |'''
+        doContentsCompareTest(contents)
+    }
+
+    @Test // GROOVY-11916
+    void testModuleImport2() {
+        assumeTrue(isParrotParser() && isAtLeastGroovy(60))
+
+        String contents = '''\
+            |import module java.xml
+            |// org.w3c.dom.
+            |Element element
+            |'''
+        doContentsCompareTest(contents)
+    }
+
+    @Test // GROOVY-11916
+    void testModuleImport3() {
+        assumeTrue(isParrotParser() && isAtLeastGroovy(60))
+
+        String contents = '''\
+            |import module java.xml
+            |import org.w3c.dom.*
+            |Element element
+            |'''
+        doContentsCompareTest(contents, contents - ~/\|import org.w3c.dom.\*\s+/)
+    }
+
+    @Test // GROOVY-11916
+    void testModuleImport4() {
+        assumeTrue(isParrotParser() && isAtLeastGroovy(60))
+
+        String contents = '''\
+            |import module java.xxx
+            |'''
+        doContentsCompareTest(contents)
+    }
+
     @Test
     void testStaticImport1() {
         String contents = '''\
@@ -2176,6 +2220,25 @@ final class OrganizeImportsTests extends OrganizeImportsTestSuite {
             |*/
             |'''
         doContentsCompareTest(contents, contents - ~/\|import groovy.transform.\*\s+/)
+    }
+
+    @Test // GROOVY-11916
+    void testOrganizeWithExtraImports10() {
+        assumeTrue(isAtLeastGroovy(60))
+
+        addConfigScript '''\
+            |withConfig(configuration) {
+            |  imports {
+            |    module 'java.xml'
+            |  }
+            |}
+            |'''
+
+        String contents = '''\
+            |import org.w3c.dom.*
+            |Element element
+            |'''
+        doContentsCompareTest(contents, contents - ~/\|import org.w3c.dom.\*\s+/)
     }
 
     @Test @NotYetImplemented

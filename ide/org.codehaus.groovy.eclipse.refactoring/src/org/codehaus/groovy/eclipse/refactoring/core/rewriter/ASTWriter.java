@@ -1,5 +1,5 @@
 /*
- * Copyright 2009-2025 the original author or authors.
+ * Copyright 2009-2026 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -203,30 +203,32 @@ public class ASTWriter extends CodeVisitorSupport implements GroovyClassVisitor 
 
     public void visitRoot() {
         preVisitStatement(root);
-        //write package
+        // write package
         if (root.getPackageName() != null) {
             groovyCode.append("package ");
-            String packageName = root.getPackageName();
-            //packageName ends with ".", chop it
+            String packageName = root.getPackageName(); // includes trailing "."
             groovyCode.append(packageName.substring(0, packageName.length() - 1));
         }
-        //write importPackage like import test.*
+
+        // TODO: write imports like "import module test"
+
+        // write imports like "import test.*"
         printImports(root.getStarImports());
 
-        //write imports like import test.TestClass
+        // write imports like "import test.TestClass"
         printImports(root.getImports());
 
-        //write imports like import static java.lang.Math.PI
+        // write imports like "import static java.lang.Math.PI"
         printImports(root.getStaticImports().values());
 
-        //write imports like import static java.lang.Math.*
+        // write imports like "import static java.lang.Math.*;"
         printImports(root.getStaticStarImports().values());
 
-        //write Statements that are not inside a class
+        // write Statements that are not inside a class
         if (!root.getStatementBlock().isEmpty()) {
             visitBlockStatement(root.getStatementBlock());
         }
-        //write the classes
+        // write the classes
         List<ClassNode> classes = root.getClasses();
         for (ClassNode classNode : classes) {
             if (!GroovyUtils.isScript(classNode)) {

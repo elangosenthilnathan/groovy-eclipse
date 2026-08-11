@@ -544,6 +544,9 @@ void faultInImports() {
 			}
 		}
 		if ((importReference.modifiers & ClassFileConstants.AccModule) != 0) {
+			// GROOVY add
+			if (!canSeeEverything())
+			// GROOVY end
 			if (problemReporter().validateJavaFeatureSupport(JavaFeature.MODULE_IMPORTS, importReference.sourceStart, importReference.sourceEnd)) {
 				continue nextImport;
 			}

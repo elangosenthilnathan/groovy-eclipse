@@ -611,27 +611,39 @@ public class AstBuilder extends GroovyParserBaseVisitor<Object> {
         } catch (IllegalArgumentException e) {
             throw createParsingFailedException(e.getMessage(), ctx);
         }
-        Set<String> skip = new HashSet<>(Arrays.asList(
-                org.codehaus.groovy.control.ResolveVisitor.DEFAULT_IMPORTS));
-        moduleNode.getStarImports().stream().map(ImportNode::getPackageName).forEach(skip::add);
-        moduleNode.getModuleStarImports().stream().map(ImportNode::getPackageName).forEach(skip::add);
+        Set<String> skip = new HashSet<>();
+        Collections.addAll(skip, org.codehaus.groovy.control.ResolveVisitor.DEFAULT_IMPORTS);
+      //for (var importNode : moduleNode.getStarImports()) skip.add(importNode.getPackageName());
+        for (var importNode : moduleNode.getModuleStarImports()) skip.add(importNode.getPackageName());
         ImportNode lastImport = null;
-        for (String pkg : packageNames) {
-            String packageName = pkg + DOT_STR;
-            if (!skip.contains(packageName)) {
+        for (String pn : packageNames) { String packageName = pn + DOT_STR;
+            if (skip.add(packageName)) {
                 // Separate list so resolution can apply JLS 6.4.1 shadowing:
                 // a user-written `import foo.*` beats a module-expanded `foo.*`.
                 moduleNode.addModuleStarImport(packageName, annotations);
                 lastImport = last(moduleNode.getModuleStarImports());
-                skip.add(packageName);
+                // GRECLIPSE add
+                lastImport.setNodeMetaData("module", moduleName);
+                // GRECLIPSE end
             }
         }
+        /* GRECLIPSE edit
         if (lastImport == null) {
             // All exported packages were already covered by existing imports
             List<ImportNode> existing = moduleNode.getModuleStarImports();
             lastImport = !existing.isEmpty() ? last(existing) : last(moduleNode.getStarImports());
         }
         return configureAST(lastImport, ctx);
+        */
+        ImportNode importNode = configureAST(new ImportNode(moduleName), ctx);
+        moduleNode.getNodeMetaData("import.module", x -> new LinkedList<>()).add(importNode);
+        importNode.putNodeMetaData("module.offset", configureAST(new ASTNode(), ctx.MODULE()).getStart());
+        ASTNode name = configureAST(new ASTNode(), ctx.qualifiedName());
+        importNode.setNameStart(name.getStart());
+        importNode.setNameEnd(name.getEnd() - 1);
+        importNode.addAnnotations(annotations);
+        return importNode;
+        // GRECLIPSE end
     }
 
     private static AnnotationNode makeAnnotationNode(final Class<? extends Annotation> type) {

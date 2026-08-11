@@ -549,9 +549,13 @@ void faultInImports() {
 			}
 		}
 		if ((importReference.modifiers & ClassFileConstants.AccModule) != 0) {
+			// GROOVY add
+			if (!canSeeEverything()) {
+			// GROOVY end
 			problemReporter().validateJavaFeatureSupport(JavaFeature.MODULE_IMPORTS, importReference.sourceStart, importReference.sourceEnd);
 			if (!(JavaFeature.MODULE_IMPORTS.isSupported(compilerOptions().sourceLevel, compilerOptions().enablePreviewFeatures))) {
 				continue nextImport;
+			}
 			}
 			ModuleBinding importedModule = this.environment.getModule(CharOperation.concatWith(compoundName, '.'));
 			if (importedModule == null) {

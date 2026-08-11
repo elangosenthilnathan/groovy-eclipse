@@ -1,6 +1,6 @@
 // GROOVY PATCHED
 /*******************************************************************************
- * Copyright (c) 2000, 2025 IBM Corporation and others.
+ * Copyright (c) 2000, 2026 IBM Corporation and others.
  *
  * This program and the accompanying materials
  * are made available under the terms of the Eclipse Public License 2.0
@@ -3747,9 +3747,10 @@ class ASTConverter {
 					default -> null;
 				};
 				if (keyword != null) {
-					Modifier newModifier = this.ast.newModifier(keyword);
-					newModifier.setSourceRange(importReference.modifiersSourceStart, keyword.toString().length());
-					importDeclaration.modifiers().add(newModifier);
+					Modifier modifier = this.ast.newModifier(keyword);
+					modifier.setSourceRange(importReference.modifiersSourceStart, // GROOVY edit
+						importReference.modifiersSourceStart < 0 ? 0 : keyword.toString().length());
+					importDeclaration.modifiers().add(modifier);
 				} else {
 					importDeclaration.setFlags(importDeclaration.getFlags() | ASTNode.MALFORMED);
 				}

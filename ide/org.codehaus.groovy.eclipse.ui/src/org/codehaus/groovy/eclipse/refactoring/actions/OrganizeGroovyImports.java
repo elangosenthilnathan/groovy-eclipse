@@ -39,6 +39,7 @@ import org.codehaus.groovy.ast.GenericsType;
 import org.codehaus.groovy.ast.GroovyClassVisitor;
 import org.codehaus.groovy.ast.ImportNode;
 import org.codehaus.groovy.ast.MethodNode;
+import org.codehaus.groovy.ast.ModuleNode;
 import org.codehaus.groovy.ast.Parameter;
 import org.codehaus.groovy.ast.expr.ArrayExpression;
 import org.codehaus.groovy.ast.expr.CastExpression;
@@ -143,8 +144,23 @@ public class OrganizeGroovyImports {
                 for (ImportNode imp : allImports) {
                     if (imp.isStar()) {
                         if (!imp.isStatic()) {
-                            rewriter.addImport(imp.getPackageName() + "*");
-                            importsSlatedForRemoval.put(imp.getPackageName() + "*", imp);
+                            if (imp.getText().contains(" module ")) {
+                                String moduleName = imp.getPackageName();
+                                List<String> packageNames = new ArrayList<>();
+                                List<ImportNode> packageNodes = org.eclipse.jdt.groovy.core.util.ReflectionUtils
+                                    .executePrivateMethod(ModuleNode.class, "getModuleStarImports", info.module);
+                                for (ImportNode pn : packageNodes) {
+                                    if (moduleName.equals(pn.getNodeMetaData("module"))) {
+                                        String packageName = pn.getPackageName(); // includes trailing .
+                                        packageNames.add(packageName.substring(0, packageName.length() - 1));
+                                    }
+                                }
+                                rewriter.addModuleImport(moduleName, packageNames);
+                                if (imp.getEnd() < 1) importsSlatedForRemoval.put("module " + moduleName, imp);
+                            } else {
+                                rewriter.addImport(imp.getPackageName() + "*");
+                                importsSlatedForRemoval.put(imp.getPackageName() + "*", imp);
+                            }
                         } else {
                             rewriter.addStaticImport(imp.getClassName().replace('$', '.'), "*", true);
                             importsSlatedForRemoval.put(imp.getClassName().replace('$', '.') + ".*", imp);
@@ -232,10 +248,12 @@ public class OrganizeGroovyImports {
                 // remove imports that were not matched to a source element
                 for (Map.Entry<String, ImportNode> entry : importsSlatedForRemoval.entrySet()) {
                     trace("Remove import '%s'", entry.getKey());
-                    if (!entry.getValue().isStatic()) {
-                        rewriter.removeImport(entry.getKey());
-                    } else {
+                    if (entry.getKey().startsWith("module ")) {
+                        rewriter.removeModuleImport(entry.getValue().getPackageName());
+                    } else if (entry.getValue().isStatic()) {
                         rewriter.removeStaticImport(entry.getKey());
+                    } else {
+                        rewriter.removeImport(entry.getKey());
                     }
                 }
 

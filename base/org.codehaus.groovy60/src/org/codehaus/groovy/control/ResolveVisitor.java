@@ -1006,7 +1006,13 @@ public class ResolveVisitor extends ClassCodeExpressionTransformer {
             String moduleMatchPkg = null;
             for (ImportNode importNode : module.getModuleStarImports()) {
                 ClassNode tmp = new ConstructedClassWithPackage(importNode.getPackageName(), name);
+                // GRECLIPSE add
+                if (resolutionFailed.add(tmp.getName()))
+                // GRECLIPSE end
                 if (resolve(tmp, false, false, true)) {
+                    // GRECLIPSE add
+                    resolutionFailed.remove(tmp.getName());
+                    // GRECLIPSE end
                     ClassNode resolved = tmp.redirect();
                     if (moduleMatch != null && !moduleMatch.getName().equals(resolved.getName())) {
                         addError("reference to " + name + " is ambiguous, both "

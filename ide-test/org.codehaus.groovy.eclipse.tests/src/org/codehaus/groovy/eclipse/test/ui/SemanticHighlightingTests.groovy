@@ -1779,6 +1779,16 @@ final class SemanticHighlightingTests extends GroovyEclipseTestSuite {
     }
 
     @Test
+    void testModuleImport() {
+        assumeTrue(isParrotParser() && isAtLeastGroovy(60))
+
+        String contents = 'import module java.base'
+
+        assertHighlighting(contents,
+            new HighlightedTypedPosition(contents.indexOf('module'), 6, KEYWORD))
+    }
+
+    @Test
     void testRecordType1() {
         assumeTrue(isParrotParser() && isAtLeastGroovy(40))
 
@@ -5130,7 +5140,7 @@ final class SemanticHighlightingTests extends GroovyEclipseTestSuite {
 
     @Test // GROOVY-11998
     void testCastAndCoerce2() {
-        assumeTrue(isParrotParser() && isAtLeastGroovy(40))
+        assumeTrue(isParrotParser() && isAtLeastGroovy(60))
 
         String contents = '''\
             |def one = (Runnable & Serializable) () -> {}

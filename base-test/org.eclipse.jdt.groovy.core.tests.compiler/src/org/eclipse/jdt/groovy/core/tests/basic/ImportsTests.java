@@ -1,5 +1,5 @@
 /*
- * Copyright 2009-2023 the original author or authors.
+ * Copyright 2009-2026 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,14 +15,18 @@
  */
 package org.eclipse.jdt.groovy.core.tests.basic;
 
+import static org.eclipse.jdt.groovy.core.tests.GroovyBundle.isAtLeastGroovy;
+import static org.eclipse.jdt.groovy.core.tests.GroovyBundle.isParrotParser;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assume.assumeTrue;
 
 import java.util.Map;
 
 import org.codehaus.jdt.groovy.internal.compiler.ast.AliasImportReference;
 import org.eclipse.jdt.internal.compiler.ast.ImportReference;
+import org.eclipse.jdt.internal.compiler.classfmt.ClassFileConstants;
 import org.eclipse.jdt.internal.compiler.impl.CompilerOptions;
 import org.junit.Test;
 
@@ -513,6 +517,72 @@ public final class ImportsTests extends GroovyCompilerTestSuite {
         //@formatter:on
 
         runConformTest(sources, "Red");
+    }
+
+    @Test // GROOVY-11916
+    public void testModuleImports1() {
+        assumeTrue(isParrotParser() && isAtLeastGroovy(60));
+
+        //@formatter:off
+        String[] sources = {
+            "Run.groovy",
+            "import module java.base\n" +
+            "import module java.logging\n" +
+            "class Run {\n" +
+            "  static main(args) {\n" +
+            "    print Logger.getLogger('name').getClass()\n" +
+            "  }\n" +
+            "}\n",
+        };
+        //@formatter:on
+
+        runConformTest(sources, "class java.util.logging.Logger");
+
+        ImportReference[] imports = getCUDeclFor("Run.groovy").imports;
+        assertEquals(2, imports.length);
+
+        assertEquals("module java.base", imports[0].toString());
+        assertEquals(ClassFileConstants.AccModule, imports[0].modifiers);
+        assertEquals( 0, imports[0].declarationSourceStart);
+        assertEquals( 7, imports[0].modifiersSourceStart);
+        assertEquals(14, imports[0].sourceStart);
+        assertEquals(22, imports[0].sourceEnd);
+
+        assertEquals("module java.logging", imports[1].toString());
+        assertEquals(ClassFileConstants.AccModule, imports[1].modifiers);
+        assertEquals(24, imports[1].declarationSourceStart);
+        assertEquals(31, imports[1].modifiersSourceStart);
+        assertEquals(38, imports[1].sourceStart);
+        assertEquals(49, imports[1].sourceEnd);
+    }
+
+    @Test // GROOVY-11916
+    public void testModuleImports2() {
+        assumeTrue(isParrotParser() && isAtLeastGroovy(60));
+
+        //@formatter:off
+        String[] sources = {
+            "Run.groovy",
+            "import module java.logging\n" +
+            "import java.util.logging.Logger\n" +
+            "class Run {\n" +
+            "  static main(args) {\n" +
+            "    print Logger.getLogger('name').getClass()\n" +
+            "  }\n" +
+            "}\n",
+        };
+        //@formatter:on
+
+        runConformTest(sources, "class java.util.logging.Logger");
+
+        ImportReference[] imports = getCUDeclFor("Run.groovy").imports;
+        assertEquals(2, imports.length);
+
+        assertEquals("module java.logging", imports[0].toString());
+        assertEquals(ClassFileConstants.AccModule, imports[0].modifiers);
+
+        assertEquals("java.util.logging.Logger", imports[1].toString());
+        assertEquals(ClassFileConstants.AccDefault, imports[1].modifiers);
     }
 
     @Test

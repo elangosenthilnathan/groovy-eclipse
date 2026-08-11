@@ -978,9 +978,10 @@ public class GroovyCompilationUnitDeclaration extends CompilationUnitDeclaration
 
             List<ImportNode> importNodes = moduleNode.getImports();
             List<ImportNode> importPackages = moduleNode.getStarImports();
+            List<ImportNode> importModulePackages = GroovyUtils.getModuleImportNodes(moduleNode); // GROOVY-11916
             Map<String, ImportNode> importStatics = moduleNode.getStaticImports();
             Map<String, ImportNode> importStaticStars = moduleNode.getStaticStarImports();
-            int importCount = importNodes.size() + importPackages.size() + importStatics.size() + importStaticStars.size();
+            int importCount = importNodes.size() + importPackages.size() + importModulePackages.size() + importStatics.size() + importStaticStars.size();
             if (importCount > 0) {
                 Map<String, ImportReference> importReferences = new TreeMap<>();
 
@@ -994,16 +995,16 @@ public class GroovyCompilationUnitDeclaration extends CompilationUnitDeclaration
                             continue; // incomplete import created during recovery
                         }
                     }
-                    char[][] splits = CharOperation.splitOn('.', importNode.getClassName().toCharArray());
+                    char[][] tokens = CharOperation.splitOn('.', importNode.getClassName().toCharArray());
                     ImportReference ref;
                     if (importNode.getAlias() == null || importNode.getAlias().isEmpty() ||
-                            importNode.getAlias().equals(String.valueOf(splits[splits.length - 1]))) {
+                            importNode.getAlias().equals(String.valueOf(tokens[tokens.length - 1]))) {
                         endOffset = nameEndOffset; // endOffset may include extras before ;
-                        long[] positions = positionsFor(splits, nameStartOffset, endOffset);
-                        ref = new ImportReference(splits, positions, false, Flags.AccDefault);
+                        long[] positions = positionsFor(tokens, nameStartOffset, endOffset);
+                        ref = new ImportReference(tokens, positions, false, Flags.AccDefault);
                     } else {
-                        long[] positions = positionsFor(splits, nameStartOffset, endOffset);
-                        ref = new AliasImportReference(importNode.getAlias().toCharArray(), splits, positions, false, Flags.AccDefault);
+                        long[] positions = positionsFor(tokens, nameStartOffset, endOffset);
+                        ref = new AliasImportReference(importNode.getAlias().toCharArray(), tokens, positions, false, Flags.AccDefault);
                     }
                     ref.annotations = createAnnotations(importNode.getAnnotations());
 
@@ -1030,8 +1031,8 @@ public class GroovyCompilationUnitDeclaration extends CompilationUnitDeclaration
                         nameEndOffset = importPackage.getNameEnd() + 1;
                         nameStartOffset = importPackage.getNameStart();
                     }
-                    char[][] splits = CharOperation.splitOn('.', importPackage.getPackageName().toCharArray(), 0, importPackage.getPackageName().length() - 1);
-                    ImportReference ref = new ImportReference(splits, positionsFor(splits, nameStartOffset, nameEndOffset), true, Flags.AccDefault);
+                    char[][] tokens = CharOperation.splitOn('.', importPackage.getPackageName().toCharArray(), 0, importPackage.getPackageName().length() - 1);
+                    ImportReference ref = new ImportReference(tokens, positionsFor(tokens, nameStartOffset, nameEndOffset), true, Flags.AccDefault);
                     ref.annotations = createAnnotations(importPackage.getAnnotations());
 
                     ref.sourceEnd = Math.max(endOffset - 1, ref.sourceStart); // For error reporting, Eclipse wants -1
@@ -1051,6 +1052,25 @@ public class GroovyCompilationUnitDeclaration extends CompilationUnitDeclaration
                     importReferences.put(lexicalKey(ref), ref);
                 }
 
+                // module imports
+                for (ImportNode importModule : importModulePackages) {
+                    char[][] tokens = CharOperation.splitOn('.', importModule.getPackageName().toCharArray());
+                    long[] position = positionsFor(tokens, importModule.getNameStart(), importModule.getNameEnd() + 1);
+                    ImportReference ref = new ImportReference(tokens, position, true, Flags.AccModule);
+                    ref.annotations = createAnnotations(importModule.getAnnotations());
+
+                    // offset of "import"
+                    ref.declarationSourceStart = importModule.getStart();
+                    // offset of "module"
+                    ref.modifiersSourceStart = importModule.getNodeMetaData("module.offset");
+                    // offset of semicolon or last name char
+                    ref.declarationSourceEnd = importModule.getEnd() - 1;
+                    // offset including trailing whitespaces
+                    ref.declarationEnd = ref.sourceEnd + trailerLength(importModule);
+
+                    importReferences.put(lexicalKey(ref), ref);
+                }
+
                 // static imports
                 for (Map.Entry<String, ImportNode> importStatic : importStatics.entrySet()) {
                     ImportNode importNode = importStatic.getValue();
@@ -1059,13 +1079,13 @@ public class GroovyCompilationUnitDeclaration extends CompilationUnitDeclaration
                         nameEndOffset = importNode.getNameEnd() + 1;
                         nameStartOffset = importNode.getNameStart();
                     }
-                    char[][] splits = CharOperation.splitOn('.', (importNode.getClassName() + '.' + importNode.getFieldName()).toCharArray());
-                    long[] positions = positionsFor(splits, nameStartOffset, nameEndOffset);
+                    char[][] tokens = CharOperation.splitOn('.', (importNode.getClassName() + '.' + importNode.getFieldName()).toCharArray());
+                    long[] positions = positionsFor(tokens, nameStartOffset, nameEndOffset);
                     ImportReference ref;
                     if (importNode.getAlias() == null || importNode.getAlias().length() < 1 || importNode.getAlias().equals(importNode.getFieldName())) {
-                        ref = new ImportReference(splits, positions, false, Flags.AccStatic);
+                        ref = new ImportReference(tokens, positions, false, Flags.AccStatic);
                     } else {
-                        ref = new AliasImportReference(importNode.getAlias().toCharArray(), splits, positions, false, Flags.AccStatic);
+                        ref = new AliasImportReference(importNode.getAlias().toCharArray(), tokens, positions, false, Flags.AccStatic);
                     }
                     ref.annotations = createAnnotations(importNode.getAnnotations());
 
@@ -1073,12 +1093,14 @@ public class GroovyCompilationUnitDeclaration extends CompilationUnitDeclaration
                     if (ref.sourceEnd < 0) {
                         // synthetic node; set all source positions to "unknown"
                         ref.declarationSourceStart = -1;
+                        ref.modifiersSourceStart = -1;
                         ref.declarationSourceEnd = -2;
                         ref.declarationEnd = -2;
                         ref.sourceEnd = -2;
                     } else {
                         ref.declarationEnd = ref.sourceEnd + trailerLength(importNode);
                         ref.declarationSourceStart = startOffset(importNode);
+                      //ref.modifiersSourceStart = offset of "static"
                         ref.declarationSourceEnd = ref.sourceEnd;
                     }
 
@@ -1103,12 +1125,14 @@ public class GroovyCompilationUnitDeclaration extends CompilationUnitDeclaration
                     if (ref.sourceEnd < 0) {
                         // synthetic node; set all source positions to "unknown"
                         ref.declarationSourceStart = -1;
+                        ref.modifiersSourceStart = -1;
                         ref.declarationSourceEnd = -2;
                         ref.declarationEnd = -2;
                         ref.sourceEnd = -2;
                     } else {
                         ref.declarationEnd = ref.sourceEnd + trailerLength(importNode);
                         ref.declarationSourceStart = importNode.getStart();
+                      //ref.modifiersSourceStart = offset of "static"
                         ref.declarationSourceEnd = ref.sourceEnd;
                     }
                     ref.trailingStarPosition = ref.sourceEnd;

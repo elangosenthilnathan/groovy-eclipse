@@ -1521,13 +1521,20 @@ out:    if ((samParameterTypes.length == 1 && isOrImplements(samParameterTypes[0
         }
 
         for (int i = 0, n = tupleExpressions.size(); i < n; i += 1) {
+            Expression tupleExpression = tupleExpressions.get(i);
             ClassNode valueType = getType(valueExpressions.get(i));
-            ClassNode targetType = getType(tupleExpressions.get(i));
+            ClassNode targetType = getType(tupleExpression);
             if (!isAssignableTo(valueType, targetType)) {
                 addStaticTypeError("Cannot assign value of type " + prettyPrintType(valueType) + " to variable of type " + prettyPrintType(targetType), rightExpression);
                 return false;
             }
-            storeType(tupleExpressions.get(i), valueType);
+            // GROOVY-12228: check for implicit conversion like "String a = 123" or "Long b = 1";
+            // as for single assignment, the target then holds its declared type, not the value type
+            ClassNode originType = getOriginalDeclarationType(tupleExpression);
+            if (!implementsInterfaceOrIsSubclassOf(wrapTypeIfNecessary(valueType), wrapTypeIfNecessary(originType))) {
+                valueType = originType;
+            }
+            storeType(tupleExpression, valueType);
         }
 
         return true;
@@ -5935,7 +5942,9 @@ trying: for (ClassNode[] signature : signatures) {
                     PropertyNode property = findProperty(receiver, pname);
                     if (property != null && !property.isFinal()) {
                         ClassNode type = property.getOriginType();
-                        if (implementsInterfaceOrIsSubclassOf(wrapTypeIfNecessary(args[0]), wrapTypeIfNecessary(type))) {
+                        // GROOVY-12229: the synthetic mutator accepts whatever the property
+                        // assignment form accepts, including implicit conversions like GString-String
+                        if (isAssignableTo(wrapTypeIfNecessary(args[0]), wrapTypeIfNecessary(type))) {
                             MethodNode node = new MethodNode(name, Opcodes.ACC_PUBLIC | (property.isStatic() ? Opcodes.ACC_STATIC : 0),
                                     VOID_TYPE, new Parameter[]{new Parameter(type, name)}, ClassNode.EMPTY_ARRAY, GENERATED_EMPTY_STATEMENT);
                             node.setDeclaringClass(property.getDeclaringClass());

@@ -76,4 +76,3 @@ public class GroovyClass {
         return this.bytes;
     }
 }
-

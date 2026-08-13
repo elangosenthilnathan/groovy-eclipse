@@ -1,4 +1,4 @@
-// Generated from GroovyLexer.g4 by ANTLR 4.13.2.7
+// Generated from GroovyLexer.g4 by ANTLR 4.13.2.14
 package org.apache.groovy.parser.antlr4;
 
     import java.util.*;
@@ -1490,7 +1490,7 @@ public class GroovyLexer extends AbstractLexer {
 		"\13\3\u00b5\f\3\u00b6\r\3\u00b7\16\b\2\2\3\u00e9\17\3\u00ea\20\t\u008f"+
 		"\2\3\u00eb\21\3\u00ec\22\3\u00ed\23";
 	public static final ATN _ATN =
-		new ATNDeserializer().deserialize(_serializedATN.toCharArray());
+		new ATNDeserializer().deserialize(_serializedATN);
 	static {
 	}
 }

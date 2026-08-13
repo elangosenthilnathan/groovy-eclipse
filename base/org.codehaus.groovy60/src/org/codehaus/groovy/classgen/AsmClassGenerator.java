@@ -27,6 +27,7 @@ import org.codehaus.groovy.ast.AnnotationNode;
 import org.codehaus.groovy.ast.ClassHelper;
 import org.codehaus.groovy.ast.ClassNode;
 import org.codehaus.groovy.ast.ConstructorNode;
+import org.codehaus.groovy.ast.DynamicVariable;
 import org.codehaus.groovy.ast.FieldNode;
 import org.codehaus.groovy.ast.GenericsType;
 import org.codehaus.groovy.ast.InnerClassNode;
@@ -1686,14 +1687,27 @@ public class AsmClassGenerator extends ClassGenerator {
             return;
         }
 
-        BytecodeVariable variable = compileStack.getVariable(expression.getName(), /*throwIfMissing*/false);
-        if (variable != null) {
-            controller.getOperandStack().loadOrStoreVariable(variable, expression.isUseReferenceDirectly());
-        } else {
+        // GROOVY-12242: VariableScopeVisitor marks out-of-scope pattern references
+        // as DynamicVariable. Name-based CompileStack lookup must not bypass that:
+        // pattern slots are allocated during condition evaluation and can still be
+        // present on the stack for short-circuit RHS of || (where the pattern is
+        // not definitely bound) or briefly on a non-live arm before hide. Treat
+        // DynamicVariable as property access even when a same-named slot exists.
+        if (expression.getAccessedVariable() instanceof DynamicVariable) {
             PropertyExpression pexp = thisPropX(/*implicit-this*/true, expression.getName());
             pexp.getProperty().setSourcePosition(expression);
             pexp.copyNodeMetaData(expression);
             pexp.visit(this);
+        } else {
+            BytecodeVariable variable = compileStack.getVariable(expression.getName(), /*throwIfMissing*/false);
+            if (variable != null) {
+                controller.getOperandStack().loadOrStoreVariable(variable, expression.isUseReferenceDirectly());
+            } else {
+                PropertyExpression pexp = thisPropX(/*implicit-this*/true, expression.getName());
+                pexp.getProperty().setSourcePosition(expression);
+                pexp.copyNodeMetaData(expression);
+                pexp.visit(this);
+            }
         }
 
         if (!compileStack.isLHS()) {
@@ -1705,11 +1719,12 @@ public class AsmClassGenerator extends ClassGenerator {
      * Creates helper class literal fields for interface bytecode generation.
      */
     protected void createInterfaceSyntheticStaticFields() {
-        // GROOVY-11982: also materialise the helper when there are call sites
-        // (e.g. dynamic code in default methods under indy=false), otherwise
-        // CallSiteWriter routes INVOKESTATIC at a class that was never emitted
-        boolean hasCallSites = !controller.getCallSiteWriter().getCallSites().isEmpty();
-        if (referencedClasses.isEmpty() && !hasCallSites) return;
+        // GROOVY-11982: also materialise the helper when a call-site array
+        // prologue was emitted (every default/static method body under
+        // indy=false, even one that registers no call sites -- GROOVY-12235),
+        // otherwise CallSiteWriter routes INVOKESTATIC at a class never emitted
+        boolean hasCallSitePrologue = controller.getCallSiteWriter().isPrologueEmitted();
+        if (referencedClasses.isEmpty() && !hasCallSitePrologue) return;
         var icl = controller.getInterfaceClassLoadingClass();
         addInnerClass(icl);
         for (Map.Entry<String, ClassNode> entry : referencedClasses.entrySet()) {

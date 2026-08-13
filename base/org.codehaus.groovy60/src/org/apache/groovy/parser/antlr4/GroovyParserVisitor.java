@@ -1,4 +1,4 @@
-// Generated from GroovyParser.g4 by ANTLR 4.13.2.7
+// Generated from GroovyParser.g4 by ANTLR 4.13.2.14
 package org.apache.groovy.parser.antlr4;
 
     import java.util.Map;
@@ -664,6 +664,12 @@ public interface GroovyParserVisitor<Result> extends ParseTreeVisitor<Result> {
 	 * @return the visitor result
 	 */
 	Result visitMatchingType(@NotNull GroovyParser.MatchingTypeContext ctx);
+	/**
+	 * Visit a parse tree produced by {@link GroovyParser#notInstanceofType}.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	Result visitNotInstanceofType(@NotNull GroovyParser.NotInstanceofTypeContext ctx);
 	/**
 	 * Visit a parse tree produced by {@link GroovyParser#typeArguments}.
 	 * @param ctx the parse tree

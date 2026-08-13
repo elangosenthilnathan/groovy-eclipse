@@ -4388,11 +4388,11 @@ final class SemanticHighlightingTests extends GroovyEclipseTestSuite {
             new HighlightedTypedPosition(contents.indexOf('TimeCategory'), 12, isAtLeastGroovy(60) ? DEPRECATED : CLASS),
             new HighlightedTypedPosition(contents.indexOf('Date'), 4, CTOR_CALL),
             new HighlightedTypedPosition(contents.indexOf('Date'), 4, CLASS),
-            new HighlightedTypedPosition(contents.indexOf('getDaylightSavingsOffset'), 24, GROOVY_CALL),
+            new HighlightedTypedPosition(contents.indexOf('getDaylightSavingsOffset'), 24, isAtLeastGroovy(60) ? DEPRECATED : GROOVY_CALL),
             new HighlightedTypedPosition(contents.indexOf('1'), 1, NUMBER),
-            new HighlightedTypedPosition(contents.indexOf('minute'), 6, GROOVY_CALL),
-            new HighlightedTypedPosition(contents.indexOf('from'), 4, METHOD_CALL),
-            new HighlightedTypedPosition(contents.indexOf('now'), 3, METHOD_CALL))
+            new HighlightedTypedPosition(contents.indexOf('minute'), 6, isAtLeastGroovy(60) ? DEPRECATED : GROOVY_CALL),
+            new HighlightedTypedPosition(contents.indexOf('from'), 4, isAtLeastGroovy(60) ? DEPRECATED : METHOD_CALL),
+            new HighlightedTypedPosition(contents.indexOf('now'), 3, isAtLeastGroovy(60) ? DEPRECATED : METHOD_CALL))
     }
 
     @Test

@@ -34,6 +34,7 @@ public enum SpecifiedVersion {
     _30(3, 0, "30"),
     _40(4, 0, "40"),
     _50(5, 0, "50"),
+    _51(5, 1, "51"),
     _60(6, 0, "60"),
     DONT_CARE(0, 0, "-1"),
     UNSPECIFIED(0, 0, "0");
@@ -130,6 +131,8 @@ public enum SpecifiedVersion {
                         switch (minor) {
                         case 0:
                             return _50;
+                        case 1:
+                            return _51;
                         }
                         break;
                     case 6:
@@ -205,13 +208,17 @@ public enum SpecifiedVersion {
         case "5.0":
             return _50;
 
+        case "51":
+        case "5.1":
+            return _51;
+
         case "60":
         case "6.0":
             return _60;
         }
 
-        System.out.println("Invalid Groovy compiler level: " + compilerLevel +
-            "\nMust be one of 16, 1.6, 17, 1.7, 18, 1.8, 19, 1.9, 20, 2.0, 21, 2.1, 22, 2.2, 23, 2.3, 24, 2.4, 25, 2.5, 26, 2.6, 30, 3.0, 40, 4.0, 50, 5.0, 60 or 6.0");
+        System.out.println("Invalid Groovy compiler level: " + compilerLevel + "\nMust be one of " +
+            "16, 1.6, 17, 1.7, 18, 1.8, 19, 1.9, 20, 2.0, 21, 2.1, 22, 2.2, 23, 2.3, 24, 2.4, 25, 2.5, 26, 2.6, 30, 3.0, 40, 4.0, 50, 5.0, 51, 5.1, 60 or 6.0");
 
         return UNSPECIFIED;
     }
@@ -261,6 +268,9 @@ public enum SpecifiedVersion {
         case 5:
             if (ver.getMinor() == 0) {
                 return _50;
+            }
+            if (ver.getMinor() == 1) {
+                return _51;
             }
             break;
         case 6:

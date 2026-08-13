@@ -36,6 +36,6 @@ final class SanityTests {
 
         int major = groovyVersion.major,
             minor = groovyVersion.minor
-        assert "${major}.${minor}" ==~ /[3-6]\.0/
+        assert "${major}.${minor}" ==~ /[3-6]\.0|5\.1/
     }
 }

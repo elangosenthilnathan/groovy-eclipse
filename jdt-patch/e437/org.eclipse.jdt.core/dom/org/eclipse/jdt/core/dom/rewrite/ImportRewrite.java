@@ -1038,6 +1038,15 @@ public final class ImportRewrite {
 		return addImport(qualifiedTypeName, this.defaultContext);
 	}
 
+	// GROOVY add
+	public void addModuleImport(String moduleName, List<String> packageNames) {
+		// stub
+	}
+	public boolean removeModuleImport(String moduleName) {
+		return false;
+	}
+	// GROOVY end
+
 	/**
 	 * Adds a new static import to the rewriter's record and returns a name - single member name if
 	 * import is successful, else qualified name.

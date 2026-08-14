@@ -131,6 +131,7 @@ public static Test suite() {
 	standardTests.add(NullTypeAnnotationTest.class);
 	standardTests.add(NegativeLambdaExpressionsTest.class);
 	standardTests.add(LambdaExpressionsTest.class);
+	standardTests.add(NestedLambdaInferenceTest.class);
 	standardTests.add(LambdaRegressionTest.class);
 	standardTests.add(SerializableLambdaTest.class);
 	standardTests.add(OverloadResolutionTest8.class);
@@ -271,6 +272,7 @@ public static Test suite() {
 	all.addTest(new TestSuite(StandAloneASTParserTest.class));
 	all.addTest(new TestSuite(HashtableOfObjectTest.class));
 	all.addTest(new TestSuite(JrtUtilTest.class));
+	all.addTest(new TestSuite(org.eclipse.jdt.core.tests.compiler.util.UtilTest.class));
 
 	int possibleComplianceLevels = AbstractCompilerTest.getPossibleComplianceLevels();
 
@@ -294,6 +296,7 @@ public static Test suite() {
 	}
 
 	all.addTest(new TestSuite(Jsr14Test.class));
+	all.addTest(new TestSuite(PrintRunJavacStats.class)); // the very last test to capture statistics of all tests
 	return all;
 }
 }

@@ -1890,7 +1890,7 @@ private RecordComponentBinding resolveTypeFor(RecordComponentBinding component) 
 	component.modifiers &= ~ExtraCompilerModifiers.AccUnresolved;
 	return component;
 }
-private FieldBinding resolveTypeFor(FieldBinding field) {
+FieldBinding resolveTypeFor(FieldBinding field) {
 
 	if (!isPrototype())
 		return this.prototype.resolveTypeFor(field);

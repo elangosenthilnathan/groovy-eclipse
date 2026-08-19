@@ -3024,19 +3024,34 @@ public class GroovyCompilationUnitDeclaration extends CompilationUnitDeclaration
             Javadoc doc = findJavadoc(methodNode.getLineNumber());
             methodDecl.javadoc = doc;
 
-            methodDecl.declarationSourceStart = (doc != null ? doc.sourceStart : methodNode.getStart());
-            methodDecl.modifiersSourceStart = methodNode.getStart();
-            methodDecl.declarationSourceEnd = methodNode.getEnd()-1;
+            methodDecl.declarationSourceStart = (doc != null ? doc.sourceStart() : methodNode.getStart());
+            //methodDecl.modifiersSourceStart = methodNode.getStart();
 
-            // script run() method has no name, so use the start of the method instead
-            methodDecl.sourceStart = Math.max(methodNode.getNameStart(), methodNode.getStart());
-            methodDecl.sourceEnd = Math.max(rparenOffset(methodNode), methodNode.getStart());
+            if (methodNode.getNameEnd() > 0) {
+                methodDecl.sourceStart = methodNode.getNameStart();
+                // end of parameter(s) or exception declarations
+                methodDecl.sourceEnd = rparenOffset(methodNode);
+                if (methodDecl.thrownExceptions != null) {
+                    methodDecl.sourceEnd = Stream.of(methodDecl.thrownExceptions).mapToInt(ASTNode::sourceEnd).max().getAsInt();
+                }
+                assert methodDecl.sourceEnd > methodDecl.sourceStart;
+            } else {
+                methodDecl.sourceStart = methodNode.getStart();
+                methodDecl.sourceEnd   = methodNode.getStart();
+            }
 
-            // opening brace -- except for abstract method, annotation method or script run() method
-            methodDecl.bodyStart = (methodNode.getCode() != null ? methodNode.getCode().getStart() : methodDecl.sourceEnd + 1);
-
-            // last character before closing brace or semicolon -- except for abstract method, annotation method or script run() method
-            methodDecl.bodyEnd = Math.max(methodDecl.bodyStart - 1, methodDecl.declarationSourceEnd - (methodDecl instanceof AnnotationMethodDeclaration ? 0 : 1));
+            if (methodNode.isAbstract()) { // NOTE: annotation attribute method does not retain offset of default
+                methodDecl.bodyStart = methodDecl.bodyEnd = methodDecl.declarationSourceEnd = methodNode.getEnd();
+            } else if (methodNode.getCode() != null && methodNode.getCode().getEnd() > 0) {
+                // first character of block
+                methodDecl.bodyStart = methodNode.getCode().getStart() + 1;
+                // final character of block
+                methodDecl.bodyEnd = methodNode.getCode().getEnd() - 2; // bodyEnd < bodyStart for empty block
+                // closing brace
+                methodDecl.declarationSourceEnd = methodDecl.bodyEnd+1; // methodNode.getEnd() may include comment
+            } else {
+                methodDecl.declarationSourceEnd = -1;
+            }
         }
 
         /**

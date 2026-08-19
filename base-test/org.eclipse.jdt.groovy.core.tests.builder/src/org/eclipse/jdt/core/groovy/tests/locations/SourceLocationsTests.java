@@ -1,5 +1,5 @@
 /*
- * Copyright 2009-2025 the original author or authors.
+ * Copyright 2009-2026 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -25,7 +25,6 @@ import java.util.List;
 import org.eclipse.core.runtime.IPath;
 import org.eclipse.jdt.core.Flags;
 import org.eclipse.jdt.core.ICompilationUnit;
-import org.eclipse.jdt.core.IField;
 import org.eclipse.jdt.core.IJavaElement;
 import org.eclipse.jdt.core.IMember;
 import org.eclipse.jdt.core.IMethod;
@@ -53,11 +52,11 @@ import org.junit.Test;
  * Tests that source locations for groovy compilation units are computed properly.
  * <p>
  * Source locations are deteremined by special marker comments in the code:<pre>
- * markers /*m1s* /  /*f1s* /  /*t1s* /  indicates start of method, field and type
- * markers /*m1e* /  /*f1e* /  /*t1e* /  indicates end of method, field and type
- * markers /*m1sn* / /*f1sn* / /*t1sn* / indicates start of method, field and type name
- * markers /*m1en* / /*f1en* / /*t1en* / indicates end of method, field and type name
- * markers /*m1sb* /           /*t1sb* / indicates the start of method and type body</pre>
+ * markers /*m1s{@literal *}/  /*f1s{@literal *}/  /*t1s{@literal *}/  indicates start of method, field and type
+ * markers /*m1e{@literal *}/  /*f1e{@literal *}/  /*t1e{@literal *}/  indicates end of method, field and type
+ * markers /*m1sn{@literal *}/ /*f1sn{@literal *}/ /*t1sn{@literal *}/ indicates start of method, field and type name
+ * markers /*m1en{@literal *}/ /*f1en{@literal *}/ /*t1en{@literal *}/ indicates end of method, field and type name
+ * markers /*m1sb{@literal *}/          /*t1sb{@literal *}/ indicates the start of method and type body</pre>
  */
 public final class SourceLocationsTests extends BuilderTestSuite {
 
@@ -153,15 +152,21 @@ public final class SourceLocationsTests extends BuilderTestSuite {
         if (start < startTag.length()) {
             start = 0;
         } else {
-            int len = (isParrotParser() || (decl instanceof IField && source.charAt(source.indexOf(endTag) - 1) == ';') ||
-                (decl instanceof IMethod && decl.getNameRange().getLength() > 0 && !Flags.isAbstract(decl.getFlags())) ? 0 : endTag.length());
+            int len = !isParrotParser() ? endTag.length() : 0;
+            if (astKind == 'm' && Flags.isAbstract(decl.getFlags())) {
+                len += ";".length(); // empty body
+            } else if (astKind == 'm' && decl.getNameRange().getLength() > 0) {
+                len = 0;
+            } else if (astKind == 'f' && source.charAt(source.indexOf(endTag) - 1) == ';') {
+                len = (!isParrotParser() || source.charAt(source.indexOf(endTag) - 2) != '/') ? 0 : -1;
+            }
             end = source.indexOf(endTag) + len;
-            if (len == 0 && source.substring(0, end).endsWith("*/")) {
-                end = source.substring(0, end).lastIndexOf("/*");
-            } else if (len > 0) {
+            if (len > 0) {
                 while (source.substring(end).startsWith("/*")) {
                     end = source.indexOf("*/", end) + 2;
                 }
+            } else if (source.substring(0, end).endsWith("*/")) {
+                end = source.substring(0, end).lastIndexOf("/*");
             }
         }
 
@@ -229,12 +234,12 @@ public final class SourceLocationsTests extends BuilderTestSuite {
         }
         if (astKind == 'f') {
             SimpleName name = ((VariableDeclarationFragment) ((FieldDeclaration) body).fragments().get(0)).getName();
-            assertEquals(body + "\nhas incorrect source start value", nameStart, name.getStartPosition());
-            assertEquals(body + "\nhas incorrect source end value", nameEnd, name.getStartPosition() + name.getLength());
+            assertEquals(body + "\nhas incorrect name node start value", nameStart, name.getStartPosition());
+            assertEquals(body + "\nhas incorrect name node end value", nameEnd, name.getStartPosition() + name.getLength());
         } else if (astKind == 'm') {
-            SimpleName name = body instanceof MethodDeclaration ? ((MethodDeclaration) body).getName() : ((AnnotationTypeMemberDeclaration) body).getName();
-            assertEquals(body + "\nhas incorrect source start value", nameStart, name.getStartPosition());
-            assertEquals(body + "\nhas incorrect source end value", nameEnd, name.getStartPosition() + (nameEnd - nameStart));
+            SimpleName name = body instanceof MethodDeclaration m ? m.getName() : ((AnnotationTypeMemberDeclaration) body).getName();
+            assertEquals(body + "\nhas incorrect name node start value", nameStart, name.getStartPosition());
+            assertEquals(body + "\nhas incorrect name node end value", nameEnd, name.getStartPosition() + (nameEnd - nameStart));
         }
 
         String bodyStartTag = "/*" + astKind + memberNumber + "sb*/";
@@ -253,14 +258,10 @@ public final class SourceLocationsTests extends BuilderTestSuite {
             assertEquals(body + "\nhas incorrect body start value", bodyStart, ((MethodDeclaration) body).getBody().getStartPosition());
         }
 
-        int bodyEnd = body.getStartPosition() + body.getLength();
-        if (bodyEnd > 0 && decl instanceof IMethod && (decl.getNameRange().getLength() == 0 ||
-                (Flags.isAbstract(decl.getFlags()) && !Flags.isAnnotation(decl.getDeclaringType().getFlags())))) {
-            bodyEnd += 1; // constructors and methods with a body have been set back by 1 for JDT compatibility
-        } else if (body instanceof FieldDeclaration && source.charAt(source.indexOf(endTag) - 1) != ';') {
-            end -= endTag.length();
+        if (astKind == 'f' && source.charAt(source.indexOf(endTag) - 1) != ';' && !isParrotParser()) {
+            end -= endTag.length(); // antlr2 parser picks up trailing comment(s) in declaration range
         }
-        assertEquals(body + "\nhas incorrect source end value", end, bodyEnd);
+        assertEquals(body + "\nhas incorrect body end value", end, body.getStartPosition() + body.getLength());
     }
 
     private static void assertRange(ISourceReference reference, int start, int until) throws Exception {
@@ -704,7 +705,7 @@ public final class SourceLocationsTests extends BuilderTestSuite {
         String source =
             "package p1\n" +
             "/*t0s*/@interface /*t0sn*/Hello/*t0en*/ /*t0sb*/{\n" +
-            "  /*m0s*/String /*m0sn*/val/*m0en*/()/*m0e*/\n" +
+            "  /*m0s*/String /*m0sn*/value/*m0en*/()/*m0e*/\n" +
             "}/*t0e*/\n";
         assertUnitWithSingleType(source, createCompUnit("p1", "Hello", source));
     }

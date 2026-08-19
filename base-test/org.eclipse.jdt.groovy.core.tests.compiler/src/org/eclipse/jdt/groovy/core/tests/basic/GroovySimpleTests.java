@@ -1973,12 +1973,12 @@ public final class GroovySimpleTests extends GroovyCompilerTestSuite {
             "1. ERROR in Foo.groovy (at line 1)\n" +
             "\tclass F\foo {}\n" +
             "\t       ^\n" +
-            "Groovy:Unexpected character 0x0C (FORM FEED (FF)) at column 8\n" +
+            "Groovy:Unexpected character: 0x0C (FORM FEED (FF))" + (isParrotParser() ? "\n" : " at column 8\n" +
             "----------\n" +
             "2. ERROR in Foo.groovy (at line 1)\n" +
             "\tclass F\foo {}\n" +
             "\t        ^\n" +
-            "Groovy:unexpected token: oo\n" +
+            "Groovy:unexpected token: oo\n") +
             "----------\n");
     }
 
@@ -1996,7 +1996,7 @@ public final class GroovySimpleTests extends GroovyCompilerTestSuite {
             "1. ERROR in Foo.groovy (at line 1)\n" +
             "\tclass F\u200Boo {}\n" +
             "\t       ^\n" +
-            "Groovy:Unexpected character 0x200B (ZERO WIDTH SPACE) at column 8\n" +
+            "Groovy:Unexpected character: 0x200B (ZERO WIDTH SPACE)" + (isParrotParser() ? "\n" : " at column 8\n") +
             "----------\n");
     }
 
@@ -2014,7 +2014,7 @@ public final class GroovySimpleTests extends GroovyCompilerTestSuite {
             "1. ERROR in Foo.groovy (at line 1)\n" +
             "\tclass F\u2063oo {}\n" +
             "\t       ^\n" +
-            "Groovy:Unexpected character 0x2063 (INVISIBLE SEPARATOR) at column 8\n" +
+            "Groovy:Unexpected character: 0x2063 (INVISIBLE SEPARATOR)" + (isParrotParser() ? "\n" : " at column 8\n") +
             "----------\n");
     }
 

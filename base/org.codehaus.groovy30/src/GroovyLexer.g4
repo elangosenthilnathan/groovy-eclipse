@@ -989,5 +989,13 @@ SH_COMMENT
 
 // Unexpected characters will be handled by groovy parser later.
 UNEXPECTED_CHAR
-    :   . { require(errorIgnored, "Unexpected character: '" + getText().replace("'", "\\'") + "'", -1, false); }
+// GRECLIPSE edit
+//  :   . { require(errorIgnored, "Unexpected character: '" + getText().replace("'", "\\'") + "'", -1, false); }
+    :   . {int c = getText().codePointAt(0);
+if (Character.isIdentifierIgnorable(c) || Character.getType(c) == Character.CONTROL && c != '\t' && c != '\r' && c != '\n') {
+	require(errorIgnored, String.format("Unexpected character: 0x%02X (%s)", c, Character.getName(c)), -1, false);
+} else {
+	require(errorIgnored, "Unexpected character: '" + getText().replace("'", "\\'") + "'", -1, false);
+}}
+// GRECLIPSE end
     ;

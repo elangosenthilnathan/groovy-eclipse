@@ -587,7 +587,12 @@ public class GroovyLexer extends AbstractLexer {
 	private void UNEXPECTED_CHAR_action(RuleContext _localctx, int actionIndex) {
 		switch (actionIndex) {
 		case 16:
-			 require(errorIgnored, "Unexpected character: '" + getText().replace("'", "\\'") + "'", -1, false); 
+			int c = getText().codePointAt(0);
+			if (Character.isIdentifierIgnorable(c) || Character.getType(c) == Character.CONTROL && c != '\t' && c != '\r' && c != '\n') {
+				require(errorIgnored, String.format("Unexpected character: 0x%02X (%s)", c, Character.getName(c)), -1, false);
+			} else {
+				require(errorIgnored, "Unexpected character: '" + getText().replace("'", "\\'") + "'", -1, false);
+			}
 			break;
 		}
 	}

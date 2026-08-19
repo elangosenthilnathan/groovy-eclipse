@@ -191,20 +191,8 @@ public class AstBuilder extends GroovyParserBaseVisitor<Object> {
         // errors so IDEs can collect multiple diagnostics in one pass. Default is fail-fast.
         // Multi-error truth for hosts is ErrorCollector; recovery may still yield a partial tree.
         this.errorRecovery = sourceUnit.getConfiguration().isErrorRecoveryEnabled();
-        /* GRECLIPSE edit
         this.parser.setErrorHandler(DescriptiveErrorStrategy.create(charStream, this.errorRecovery));
-        */
-        this.parser.setErrorHandler(new DescriptiveErrorStrategy(charStream) {
-            @Override
-            protected String escapeWSAndQuote(final String string) { int cp;
-                if (string.length() == 1 && (Character.isIdentifierIgnorable(cp = string.codePointAt(0)) ||
-                        Character.getType(cp) == Character.CONTROL && cp != '\t' && cp != '\r' && cp != '\n')) {
-                    return String.format("0x%02X (%s) at column %d", cp, Character.getName(cp), lexer.getCharPositionInLine());
-                }
-                return super.escapeWSAndQuote(string);
-            }
-        });
-        // GRECLIPSE end
+
         this.groovydocManager = new GroovydocManager(groovydocEnabled, runtimeGroovydocEnabled);
         this.tryWithResourcesASTTransformation = new TryWithResourcesASTTransformation(this);
         // GRECLIPSE add

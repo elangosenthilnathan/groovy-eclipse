@@ -170,7 +170,7 @@ public class UnicodeEscapingReader extends Reader {
     // GRECLIPSE add
     private void checkCodePoint(int c) {
         if (Character.isIdentifierIgnorable(c) || Character.getType(c) == Character.CONTROL && c != '\t' && c != '\r' && c != '\n') {
-            lexer.reportError(String.format("Unexpected character 0x%02X (%s) at column %d", c, Character.getName(c), lexer.getColumn()));
+            lexer.reportError(String.format("Unexpected character: 0x%02X (%s) at column %d", c, Character.getName(c), lexer.getColumn()));
         }
     }
     // GRECLIPSE end

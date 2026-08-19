@@ -1,5 +1,5 @@
 /*
- * Copyright 2009-2020 the original author or authors.
+ * Copyright 2009-2026 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,6 +14,9 @@
  * limitations under the License.
  */
 package org.codehaus.groovy.eclipse.codeassist.tests
+
+import static org.eclipse.jdt.groovy.core.tests.GroovyBundle.isRecoveryParser
+import static org.junit.Assume.assumeTrue
 
 import org.eclipse.jface.text.contentassist.ICompletionProposal
 import org.junit.Test
@@ -84,6 +87,8 @@ final class ImportCompletionTests extends CompletionTestSuite {
 
     @Test
     void testPack4() {
+        assumeTrue(isRecoveryParser())
+
         String contents = '''\
             |import groovy.
             |'''.stripMargin()
@@ -92,6 +97,8 @@ final class ImportCompletionTests extends CompletionTestSuite {
 
     @Test
     void testPack4a() {
+        assumeTrue(isRecoveryParser())
+
         String contents = '''\
             |import static groovy.
             |'''.stripMargin()

@@ -1,11 +1,11 @@
 /*
- * Copyright 2009-2017 the original author or authors.
+ * Copyright 2009-2026 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
+ *     https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -14,6 +14,9 @@
  * limitations under the License.
  */
 package org.codehaus.groovy.eclipse.test.adapters
+
+import static org.eclipse.jdt.groovy.core.tests.GroovyBundle.isRecoveryParser
+import static org.junit.Assume.assumeTrue
 
 import org.codehaus.groovy.ast.ClassNode
 import org.codehaus.groovy.eclipse.test.GroovyEclipseTestSuite
@@ -41,6 +44,8 @@ final class GroovyIFileEditorInputAdapterFactoryTests extends GroovyEclipseTestS
 
     @Test
     void testIFileEditorInputAdapterCompileError() {
+        assumeTrue(isRecoveryParser())
+
         def unit = addGroovySource('class OtherClass { static void main(String[] args', 'OtherClass', 'pack1')
         buildProject()
 
@@ -53,6 +58,8 @@ final class GroovyIFileEditorInputAdapterFactoryTests extends GroovyEclipseTestS
 
     @Test
     void testIFileEditorInputAdapterCompileError2() {
+        assumeTrue(isRecoveryParser())
+
         def unit = addGroovySource('class C { abstract def foo() {} }', 'C', 'pack1')
         buildProject()
 

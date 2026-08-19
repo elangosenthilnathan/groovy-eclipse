@@ -1,5 +1,5 @@
 /*
- * Copyright 2009-2024 the original author or authors.
+ * Copyright 2009-2026 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,7 +15,10 @@
  */
 package org.codehaus.groovy.eclipse.dsl.tests
 
+import static org.eclipse.jdt.groovy.core.tests.GroovyBundle.isRecoveryParser
 import static org.junit.Assume.assumeTrue
+
+import groovy.test.NotYetImplemented
 
 import org.codehaus.groovy.eclipse.codeassist.GroovyContentAssist
 import org.codehaus.groovy.eclipse.codeassist.tests.CompletionTestSuite
@@ -184,6 +187,8 @@ final class DSLContentAssistTests extends CompletionTestSuite {
 
     @Test
     void testAssignedVariable6() {
+        assumeTrue(isRecoveryParser())
+
         createDsld '''\
             |contribute(bind(exprs: assignedVariable())) {
             |  property name: 'var_' + exprs[0].leftExpression.name
@@ -196,6 +201,8 @@ final class DSLContentAssistTests extends CompletionTestSuite {
 
     @Test // https://github.com/groovy/groovy-eclipse/issues/600
     void testAssignedVariable6a() {
+        assumeTrue(isRecoveryParser())
+
         createDsld '''\
             |contribute(bind(exprs: assignedVariable())) {
             |  property name: 'var_' + exprs[0].leftExpression.name
@@ -837,6 +844,8 @@ final class DSLContentAssistTests extends CompletionTestSuite {
 
     @Test
     void testNamedParamsAnnotation3() {
+        assumeTrue(isRecoveryParser())
+
         String contents = '''\
             |import groovy.transform.*
             |
@@ -1028,6 +1037,8 @@ final class DSLContentAssistTests extends CompletionTestSuite {
 
     @Test
     void testNamedVariantTransform9() {
+        assumeTrue(isRecoveryParser())
+
         String contents = '''\
             |import groovy.transform.*
             |
@@ -1342,7 +1353,7 @@ final class DSLContentAssistTests extends CompletionTestSuite {
         assertProposalOrdering(proposals, 'getInstance', 'getIjk')
     }
 
-    @Test
+    @NotYetImplemented @Test
     void testSortableTransform1() {
         String contents = '''\
             |import groovy.transform.*

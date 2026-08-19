@@ -1,5 +1,5 @@
 /*
- * Copyright 2009-2025 the original author or authors.
+ * Copyright 2009-2026 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,8 +15,10 @@
  */
 package org.codehaus.groovy.eclipse.codeassist.tests
 
+import static org.eclipse.jdt.groovy.core.tests.GroovyBundle.isRecoveryParser
 import static org.eclipse.jdt.ui.PreferenceConstants.CODEASSIST_ADDIMPORT
 import static org.eclipse.jdt.ui.PreferenceConstants.TYPEFILTER_ENABLED
+import static org.junit.Assume.assumeTrue
 import static org.osgi.framework.Version.parseVersion
 
 import groovy.test.NotYetImplemented
@@ -39,6 +41,8 @@ final class AnnotationCompletionTests extends CompletionTestSuite {
 
     @Test
     void testAnno0() {
+        assumeTrue(isRecoveryParser())
+
         String contents = '@ class Foo { }'
         def proposals = getProposals(contents, '@')
 
@@ -55,6 +59,8 @@ final class AnnotationCompletionTests extends CompletionTestSuite {
 
     @Test
     void testAnno0b() {
+        assumeTrue(isRecoveryParser())
+
         String contents = 'import javax.annotation.*\n @ @Generated("") class Foo { }'
         def proposals = getProposals(contents, '@')
 
@@ -63,6 +69,8 @@ final class AnnotationCompletionTests extends CompletionTestSuite {
 
     @Test
     void testAnno0c() {
+        assumeTrue(isRecoveryParser())
+
         String contents = 'import javax.annotation.*\n @Generated("") @ class Foo { }'
         def proposals = createProposalsAtOffset(contents, getLastIndexOf(contents, '@'))
 
@@ -71,6 +79,8 @@ final class AnnotationCompletionTests extends CompletionTestSuite {
 
     @Test // https://github.com/groovy/groovy-eclipse/issues/994
     void testAnno0d() {
+        assumeTrue(isRecoveryParser())
+
         String contents = '@ class Foo { }'
         def proposals = getProposals(contents, '@')
 
@@ -215,6 +225,8 @@ final class AnnotationCompletionTests extends CompletionTestSuite {
 
     @Test
     void testAnnoAttr5() {
+        assumeTrue(isRecoveryParser())
+
         addJavaSource '''\
             |package p;
             |import java.lang.annotation.*;
@@ -238,6 +250,8 @@ final class AnnotationCompletionTests extends CompletionTestSuite {
 
     @Test // https://github.com/groovy/groovy-eclipse/issues/761
     void testAnnoAttr6() {
+        assumeTrue(isRecoveryParser())
+
         addJavaSource '''\
             |package p;
             |import java.lang.annotation.*;
@@ -285,6 +299,8 @@ final class AnnotationCompletionTests extends CompletionTestSuite {
 
     @Test // https://github.com/groovy/groovy-eclipse/issues/761
     void testAnnoAttr8() {
+        assumeTrue(isRecoveryParser())
+
         addJavaSource '''\
             |package p;
             |import java.lang.annotation.*;
@@ -309,6 +325,8 @@ final class AnnotationCompletionTests extends CompletionTestSuite {
 
     @Test // https://github.com/groovy/groovy-eclipse/issues/761
     void testAnnoAttr9() {
+        assumeTrue(isRecoveryParser())
+
         addJavaSource '''\
             |package p;
             |import java.lang.annotation.*;
@@ -334,6 +352,8 @@ final class AnnotationCompletionTests extends CompletionTestSuite {
 
     @Test // https://github.com/groovy/groovy-eclipse/issues/761
     void testAnnoAttr10() {
+        assumeTrue(isRecoveryParser())
+
         addJavaSource '''\
             |package p;
             |import java.lang.annotation.*;
@@ -359,6 +379,8 @@ final class AnnotationCompletionTests extends CompletionTestSuite {
 
     @Test // https://github.com/groovy/groovy-eclipse/issues/671
     void testAnnoAttr11() {
+        assumeTrue(isRecoveryParser())
+
         setJavaPreference(AssistOptions.OPTION_PerformDeprecationCheck, AssistOptions.ENABLED)
 
         addJavaSource '''\
@@ -386,6 +408,8 @@ final class AnnotationCompletionTests extends CompletionTestSuite {
 
     @Test // https://github.com/groovy/groovy-eclipse/issues/769
     void testAnnoAttr12() {
+        assumeTrue(isRecoveryParser())
+
         addJavaSource '''\
             |package p;
             |import java.lang.annotation.*;
@@ -568,6 +592,8 @@ final class AnnotationCompletionTests extends CompletionTestSuite {
 
     @Test
     void testAnnoAttrConst7() {
+        assumeTrue(isRecoveryParser())
+
         addJavaSource '''\
             |package p;
             |import java.lang.annotation.*;
@@ -592,6 +618,8 @@ final class AnnotationCompletionTests extends CompletionTestSuite {
 
     @Test
     void testAnnoAttrConst8() {
+        assumeTrue(isRecoveryParser())
+
         addJavaSource '''\
             |package p;
             |import java.lang.annotation.*;
@@ -901,6 +929,8 @@ final class AnnotationCompletionTests extends CompletionTestSuite {
 
     @Test // https://github.com/groovy/groovy-eclipse/issues/671
     void testAnnoAttrEnumConst9() {
+        assumeTrue(isRecoveryParser())
+
         setJavaPreference(AssistOptions.OPTION_PerformDeprecationCheck, AssistOptions.ENABLED)
 
         addJavaSource '''\

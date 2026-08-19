@@ -1,5 +1,5 @@
 /*
- * Copyright 2009-2020 the original author or authors.
+ * Copyright 2009-2026 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,6 +14,9 @@
  * limitations under the License.
  */
 package org.codehaus.groovy.eclipse.codeassist.tests
+
+import static org.eclipse.jdt.groovy.core.tests.GroovyBundle.isRecoveryParser
+import static org.junit.Assume.assumeTrue
 
 import org.junit.Test
 
@@ -31,6 +34,7 @@ final class GenericCompletionTests extends CompletionTestSuite {
 
     @Test
     void testAfterArrayAccesses2() {
+        assumeTrue(isRecoveryParser())
         String contents = 'Map<String, Map<Integer, List<Date>>> dataTyped\ndataTyped      ["foo"].'
         String expected = 'Map<String, Map<Integer, List<Date>>> dataTyped\ndataTyped      ["foo"].clear()'
         checkProposalApplicationNonType(contents, expected, getIndexOf(contents, '["foo"].'), 'clear()')
@@ -45,6 +49,7 @@ final class GenericCompletionTests extends CompletionTestSuite {
 
     @Test
     void testAfterMultipleArrayAccesses2() {
+        assumeTrue(isRecoveryParser())
         String contents = 'Map<String, Map<Integer, List<Date>>> dataTyped\ndataTyped      ["foo"][5][2].'
         String expected = 'Map<String, Map<Integer, List<Date>>> dataTyped\ndataTyped      ["foo"][5][2].time'
         checkProposalApplicationNonType(contents, expected, getIndexOf(contents, '["foo"][5][2].'), 'time')

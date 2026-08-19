@@ -1,5 +1,5 @@
 /*
- * Copyright 2009-2024 the original author or authors.
+ * Copyright 2009-2026 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,6 +16,8 @@
 package org.eclipse.jdt.core.groovy.tests.search;
 
 import static org.eclipse.jdt.groovy.core.tests.GroovyBundle.isAtLeastGroovy;
+import static org.eclipse.jdt.groovy.core.tests.GroovyBundle.isRecoveryParser;
+import static org.junit.Assume.assumeTrue;
 
 import org.codehaus.groovy.ast.ASTNode;
 import org.codehaus.groovy.ast.FieldNode;
@@ -63,6 +65,7 @@ public final class StaticInferencingTests extends InferencingTestSuite {
 
     @Test
     public void testClassReference3() {
+        assumeTrue(isRecoveryParser());
         String contents = "String.";
         assertType(contents, 0, 6, "java.lang.Class<java.lang.String>");
     }

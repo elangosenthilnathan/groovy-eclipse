@@ -1,5 +1,5 @@
 /*
- * Copyright 2009-2023 the original author or authors.
+ * Copyright 2009-2026 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,6 +15,7 @@
  */
 package org.codehaus.groovy.eclipse.dsl.tests
 
+import static org.eclipse.jdt.groovy.core.tests.GroovyBundle.isRecoveryParser
 import static org.junit.Assume.assumeTrue
 
 import org.codehaus.groovy.eclipse.codeassist.GroovyContentAssist
@@ -167,6 +168,8 @@ final class DSLNamedArgContentAssistTests extends CompletionTestSuite {
 
     @Test
     void testUseNamedArgs3() {
+        assumeTrue(isRecoveryParser())
+
         createDSL '''\
             |contribute(currentType()) {
             |  method name: 'flar', params: [aaa: Integer, bbb: Boolean, ccc: String], useNamedArgs: true

@@ -38,7 +38,6 @@ import org.codehaus.groovy.ast.ClassNode;
 import org.codehaus.groovy.ast.FieldNode;
 import org.codehaus.groovy.ast.GenericsType;
 import org.codehaus.groovy.ast.PropertyNode;
-import org.codehaus.groovy.ast.expr.ConstructorCallExpression;
 import org.codehaus.groovy.ast.expr.Expression;
 import org.codehaus.groovy.ast.stmt.ReturnStatement;
 import org.codehaus.groovy.control.ResolveVisitor;
@@ -2946,7 +2945,7 @@ public final class BasicGroovyBuildTests extends BuilderTestSuite {
 
         // now find the class reference
         ReturnStatement returnStatement = (ReturnStatement) unit.getModuleNode().getStatementBlock().getStatements().get(0);
-        ClassNode type = ((ConstructorCallExpression) returnStatement.getExpression()).getType();
+        ClassNode type = returnStatement.getExpression().getType();
 
         // now check that the field initializer exists
         Expression initialExpression = type.getField("x").getInitialExpression();

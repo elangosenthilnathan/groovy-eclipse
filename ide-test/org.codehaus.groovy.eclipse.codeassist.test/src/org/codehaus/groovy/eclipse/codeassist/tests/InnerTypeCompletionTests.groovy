@@ -1,5 +1,5 @@
 /*
- * Copyright 2009-2020 the original author or authors.
+ * Copyright 2009-2026 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,6 +14,9 @@
  * limitations under the License.
  */
 package org.codehaus.groovy.eclipse.codeassist.tests
+
+import static org.eclipse.jdt.groovy.core.tests.GroovyBundle.isRecoveryParser
+import static org.junit.Assume.assumeTrue
 
 import org.eclipse.jdt.ui.PreferenceConstants
 import org.eclipse.jface.text.contentassist.ICompletionProposal
@@ -32,6 +35,8 @@ final class InnerTypeCompletionTests extends CompletionTestSuite {
 
     @Test
     void testInInnerClass1() {
+        assumeTrue(isRecoveryParser())
+
         String contents = '''\
             |class Outer {
             |  class Inner {
@@ -166,6 +171,8 @@ final class InnerTypeCompletionTests extends CompletionTestSuite {
 
     @Test
     void testInnerClass8() {
+        assumeTrue(isRecoveryParser())
+
         addGroovySource '''\
             |class Outer {
             |  class Inner {
@@ -216,6 +223,8 @@ final class InnerTypeCompletionTests extends CompletionTestSuite {
 
     @Test
     void testInnerClass11() {
+        assumeTrue(isRecoveryParser())
+
         addGroovySource '''\
             |class Outer {
             |  interface Inner {
@@ -323,6 +332,8 @@ final class InnerTypeCompletionTests extends CompletionTestSuite {
 
     @Test
     void testInnerClass17() {
+        assumeTrue(isRecoveryParser())
+
         addGroovySource '''\
             |class Outer {
             |  class Inner {
@@ -342,6 +353,8 @@ final class InnerTypeCompletionTests extends CompletionTestSuite {
 
     @Test
     void testInnerClass18() {
+        assumeTrue(isRecoveryParser())
+
         addGroovySource '''\
             |class Outer {
             |  class Inner {
@@ -360,6 +373,8 @@ final class InnerTypeCompletionTests extends CompletionTestSuite {
 
     @Test
     void testInnerClass19() {
+        assumeTrue(isRecoveryParser())
+
         addGroovySource '''\
             |class Outer {
             |  class Inner {
@@ -387,6 +402,8 @@ final class InnerTypeCompletionTests extends CompletionTestSuite {
 
     @Test
     void testInnerClass20() {
+        assumeTrue(isRecoveryParser())
+
         addGroovySource '''\
             |class Outer {
             |  class Inner {

@@ -17,6 +17,7 @@ package org.codehaus.groovy.eclipse.codeassist.tests
 
 import static org.eclipse.jdt.groovy.core.tests.GroovyBundle.isAtLeastGroovy
 import static org.eclipse.jdt.groovy.core.tests.GroovyBundle.isParrotParser
+import static org.eclipse.jdt.groovy.core.tests.GroovyBundle.isRecoveryParser
 import static org.junit.Assume.assumeTrue
 
 import org.eclipse.jdt.internal.codeassist.impl.AssistOptions
@@ -87,6 +88,8 @@ final class TypeCompletionTests extends CompletionTestSuite {
 
     @Test
     void testCompletionTypesInClassBody() {
+        assumeTrue(isRecoveryParser())
+
         String contents = 'class Foo {\nHTML\n}'
         ICompletionProposal[] proposals = createProposalsAtOffset(contents, getIndexOf(contents, 'HTML'))
         proposalExists(proposals, 'HTML - javax.swing.text.html', 1)
@@ -115,6 +118,8 @@ final class TypeCompletionTests extends CompletionTestSuite {
 
     @Test
     void testCompletionsTypesInThrow() {
+        assumeTrue(isRecoveryParser())
+
         String contents = 'throw new MPE'
         ICompletionProposal[] proposals = createProposalsAtOffset(contents, getIndexOf(contents, 'MPE'))
         // found twice: once as a type proposal and once as a constructor proposal
@@ -153,6 +158,8 @@ final class TypeCompletionTests extends CompletionTestSuite {
 
     @Test
     void testCompleteFullyQualifiedTypeInClass() {
+        assumeTrue(isRecoveryParser())
+
         String contents = 'class Foo { javax.swing.text.html.HTMLDocume }'
         ICompletionProposal[] proposals = createProposalsAtOffset(contents, getIndexOf(contents, 'HTMLDocume'))
         proposalExists(proposals, 'HTMLDocument', 1, true)
@@ -167,6 +174,8 @@ final class TypeCompletionTests extends CompletionTestSuite {
 
     @Test
     void testCompleteFullyQualifiedTypeInMethodParams() {
+        assumeTrue(isRecoveryParser())
+
         String contents = 'class Foo { def x(javax.swing.text.html.HTMLDocume) { } }'
         ICompletionProposal[] proposals = createProposalsAtOffset(contents, getIndexOf(contents, 'HTMLDocume'))
         proposalExists(proposals, 'HTMLDocument', 1, true)
@@ -181,6 +190,8 @@ final class TypeCompletionTests extends CompletionTestSuite {
 
     @Test
     void testCompleteFullyQualifiedInnerType1() {
+        assumeTrue(isRecoveryParser())
+
         String contents = 'java.util.Map.'
         ICompletionProposal[] proposals = createProposalsAtOffset(contents, contents.length())
         proposalExists(proposals, 'Entry', 1, true)
@@ -195,6 +206,8 @@ final class TypeCompletionTests extends CompletionTestSuite {
 
     @Test
     void testCompletePartiallyQualifiedInnerType1() {
+        assumeTrue(isRecoveryParser())
+
         String contents = 'Map.'
         ICompletionProposal[] proposals = createProposalsAtOffset(contents, contents.length())
         proposalExists(proposals, 'Entry', 1, true)
@@ -209,6 +222,8 @@ final class TypeCompletionTests extends CompletionTestSuite {
 
     @Test
     void testCompletePackageInClass() {
+        assumeTrue(isRecoveryParser())
+
         String contents = 'class Foo { javax.swing.text.html.p }'
         ICompletionProposal[] proposals = createProposalsAtOffset(contents, getIndexOf(contents, '.p'))
         proposalExists(proposals, 'javax.swing.text.html.parser', 1, true)
@@ -227,6 +242,8 @@ final class TypeCompletionTests extends CompletionTestSuite {
 
     @Test
     void testCompletePackageInMethodParams() {
+        assumeTrue(isRecoveryParser())
+
         String contents = 'class Foo { def x(javax.swing.text.html.p ) { } }'
         ICompletionProposal[] proposals = createProposalsAtOffset(contents, getIndexOf(contents, '.p'))
         proposalExists(proposals, 'javax.swing.text.html.parser', 1, true)
@@ -294,6 +311,8 @@ final class TypeCompletionTests extends CompletionTestSuite {
 
     @Test
     void testField1() {
+        assumeTrue(isRecoveryParser())
+
         String contents = 'class Foo {\n' + '\tJFr\n' + '}'
         ICompletionProposal[] proposals = createProposalsAtOffset(contents, getIndexOf(contents, 'JFr'))
         proposalExists(proposals, 'JFrame - javax.swing', 1)
@@ -343,6 +362,8 @@ final class TypeCompletionTests extends CompletionTestSuite {
 
     @Test
     void testField8() {
+        assumeTrue(isRecoveryParser())
+
         String contents = '''\
             |class Foo {
             |  String bar
@@ -363,6 +384,8 @@ final class TypeCompletionTests extends CompletionTestSuite {
 
     @Test
     void testField9() {
+        assumeTrue(isRecoveryParser())
+
         String contents = '''\
             |class Foo {
             |  String bar
@@ -382,6 +405,8 @@ final class TypeCompletionTests extends CompletionTestSuite {
 
     @Test // https://github.com/groovy/groovy-eclipse/issues/866
     void testField9a() {
+        assumeTrue(isRecoveryParser())
+
         String contents = '''\
             |class Foo {
             |  String bar
@@ -401,6 +426,8 @@ final class TypeCompletionTests extends CompletionTestSuite {
 
     @Test
     void testField10() {
+        assumeTrue(isRecoveryParser())
+
         String contents = '''\
             |import java.awt.*
             |
@@ -423,6 +450,8 @@ final class TypeCompletionTests extends CompletionTestSuite {
 
     @Test
     void testField11() {
+        assumeTrue(isRecoveryParser())
+
         String contents = '''\
             |import java.awt.*
             |

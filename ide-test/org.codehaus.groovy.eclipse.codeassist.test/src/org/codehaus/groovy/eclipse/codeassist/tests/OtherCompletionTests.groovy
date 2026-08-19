@@ -1,5 +1,5 @@
 /*
- * Copyright 2009-2024 the original author or authors.
+ * Copyright 2009-2026 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,6 +16,8 @@
 package org.codehaus.groovy.eclipse.codeassist.tests
 
 import static org.eclipse.jdt.groovy.core.tests.GroovyBundle.isAtLeastGroovy
+import static org.eclipse.jdt.groovy.core.tests.GroovyBundle.isRecoveryParser
+import static org.junit.Assume.assumeTrue
 
 import org.codehaus.groovy.eclipse.codeassist.GroovyContentAssist
 import org.eclipse.jface.text.contentassist.ICompletionProposal
@@ -31,6 +33,8 @@ final class OtherCompletionTests extends CompletionTestSuite {
 
     @Test
     void testNoNullPointerException() {
+        assumeTrue(isRecoveryParser())
+
         String contents = 'getClass().'
         ICompletionProposal[] proposals = createProposalsAtOffset(contents, getIndexOf(contents, '.'))
         proposalExists(proposals, 'toGenericString()', 1)
@@ -275,6 +279,8 @@ final class OtherCompletionTests extends CompletionTestSuite {
 
     @Test
     void testListCompletion1() {
+        assumeTrue(isRecoveryParser())
+
         String contents = '[].'
         ICompletionProposal[] proposals = createProposalsAtOffset(contents, getLastIndexOf(contents, '.'))
         checkReplacementString(proposals, ['removeAll(arg0)', 'removeAll(c)'] as String[], 1)
@@ -387,6 +393,8 @@ final class OtherCompletionTests extends CompletionTestSuite {
 
     @Test
     void testSwitchCompletion1() {
+        assumeTrue(isRecoveryParser())
+
         addGroovySource('enum E { ONE, TWO, THREE }', 'E', 'p')
         String contents = '''\
             |void meth(p.E e) {
@@ -401,6 +409,8 @@ final class OtherCompletionTests extends CompletionTestSuite {
 
     @Test // https://github.com/groovy/groovy-eclipse/issues/762
     void testSwitchCompletion2() {
+        assumeTrue(isRecoveryParser())
+
         String contents = '''\
             |enum E { ONE, TWO, THREE }
             |void meth(E e) {
@@ -424,6 +434,8 @@ final class OtherCompletionTests extends CompletionTestSuite {
 
     @Test // https://github.com/groovy/groovy-eclipse/issues/371
     void testCompileStaticCompletion1() {
+        assumeTrue(isRecoveryParser())
+
         String contents = '''\
             |import groovy.transform.*
             |class Bean {

@@ -1,5 +1,5 @@
 /*
- * Copyright 2009-2020 the original author or authors.
+ * Copyright 2009-2026 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 package org.codehaus.groovy.eclipse.refactoring.test.extract
+
+import static org.eclipse.jdt.groovy.core.tests.GroovyBundle.isParrotParser
 
 final class ExtractConstantTestsData {
 
@@ -287,8 +289,8 @@ final class ExtractConstantTestsData {
         |\t\tA.FOO_BAR_FRAX
         |\t}
         |\tint g() {
-        |\t\tdef x = A.FOO_BAR_FRAX+ 7
+        |\t\tdef x = A.FOO_BAR_FRAX%s+ 7
         |\t}
         |}
-        |'''.stripMargin()
+        |'''.formatted(isParrotParser()?' ':'').stripMargin()
 }

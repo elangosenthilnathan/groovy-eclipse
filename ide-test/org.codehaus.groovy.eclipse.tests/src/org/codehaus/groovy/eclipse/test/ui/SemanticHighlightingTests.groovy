@@ -15,11 +15,12 @@
  */
 package org.codehaus.groovy.eclipse.test.ui
 
-import static org.codehaus.groovy.eclipse.GroovyPlugin.getDefault as getGroovyPlugin
-import static org.codehaus.groovy.eclipse.editor.highlighting.HighlightedTypedPosition.HighlightKind.*
 import static org.codehaus.groovy.eclipse.editor.highlighting.HighlightedTypedPosition.HighlightKind.GROOVY_CALL as GSTRING
+import static org.codehaus.groovy.eclipse.editor.highlighting.HighlightedTypedPosition.HighlightKind.*
+import static org.codehaus.groovy.eclipse.GroovyPlugin.getDefault as getGroovyPlugin
 import static org.eclipse.jdt.groovy.core.tests.GroovyBundle.isAtLeastGroovy
 import static org.eclipse.jdt.groovy.core.tests.GroovyBundle.isParrotParser
+import static groovy.test.GroovyAssert.notYetImplemented
 import static org.junit.Assert.assertEquals
 import static org.junit.Assume.assumeTrue
 
@@ -35,7 +36,6 @@ import org.eclipse.jdt.groovy.search.TypeInferencingVisitorFactory
 import org.eclipse.jdt.groovy.search.TypeInferencingVisitorWithRequestor
 import org.eclipse.jdt.internal.compiler.impl.CompilerOptions
 import org.junit.Before
-import org.junit.Ignore
 import org.junit.Test
 
 final class SemanticHighlightingTests extends GroovyEclipseTestSuite {
@@ -1910,15 +1910,17 @@ final class SemanticHighlightingTests extends GroovyEclipseTestSuite {
             new HighlightedTypedPosition(contents.lastIndexOf('sealed'), 6, VARIABLE)*/)
     }
 
-    @Test // GROOVY-9630
+    @Test
     void testValKeyword0() {
+        if (isParrotParser() && notYetImplemented(this)) return // GROOVY-9630
+
         String contents = '''\
             |def val
             |val = null
             |'''.stripMargin()
 
         assertHighlighting(contents,
-            new HighlightedTypedPosition(contents.indexOf('val'),     3, VARIABLE),
+            new HighlightedTypedPosition(contents.    indexOf('val'), 3, VARIABLE),
             new HighlightedTypedPosition(contents.lastIndexOf('val'), 3, VARIABLE))
     }
 
@@ -2027,15 +2029,17 @@ final class SemanticHighlightingTests extends GroovyEclipseTestSuite {
             new HighlightedTypedPosition(contents.indexOf('getResourceAsStream'), 'getResourceAsStream'.length(), METHOD_CALL))
     }
 
-    @Test // GROOVY-9630
+    @Test
     void testVarKeyword0() {
+        if (isParrotParser() && notYetImplemented(this)) return // GROOVY-9630
+
         String contents = '''\
             |def var
             |var = null
             |'''.stripMargin()
 
         assertHighlighting(contents,
-            new HighlightedTypedPosition(contents.indexOf('var'),     3, VARIABLE),
+            new HighlightedTypedPosition(contents.    indexOf('var'), 3, VARIABLE),
             new HighlightedTypedPosition(contents.lastIndexOf('var'), 3, VARIABLE))
     }
 
@@ -2394,7 +2398,7 @@ final class SemanticHighlightingTests extends GroovyEclipseTestSuite {
     @Test
     void testGStringType() {
         // the keyword class is identified by GroovyTagScanner within non-comment, non-GString content
-        String contents = '"prefix ${java.lang.Object.class;\'class\'} class suffix"'
+        String contents = '"prefix ${java.lang.Object.' + 'class;\'class\'} class suffix"'
 
         assertHighlighting(contents,
             new HighlightedTypedPosition(contents.indexOf('"'), contents.length(), GSTRING),
@@ -4388,11 +4392,11 @@ final class SemanticHighlightingTests extends GroovyEclipseTestSuite {
             new HighlightedTypedPosition(contents.indexOf('TimeCategory'), 12, isAtLeastGroovy(60) ? DEPRECATED : CLASS),
             new HighlightedTypedPosition(contents.indexOf('Date'), 4, CTOR_CALL),
             new HighlightedTypedPosition(contents.indexOf('Date'), 4, CLASS),
-            new HighlightedTypedPosition(contents.indexOf('getDaylightSavingsOffset'), 24, isAtLeastGroovy(60) ? DEPRECATED : GROOVY_CALL),
+            new HighlightedTypedPosition(contents.indexOf('getDaylightSavingsOffset'), 24, GROOVY_CALL),
             new HighlightedTypedPosition(contents.indexOf('1'), 1, NUMBER),
-            new HighlightedTypedPosition(contents.indexOf('minute'), 6, isAtLeastGroovy(60) ? DEPRECATED : GROOVY_CALL),
-            new HighlightedTypedPosition(contents.indexOf('from'), 4, isAtLeastGroovy(60) ? DEPRECATED : METHOD_CALL),
-            new HighlightedTypedPosition(contents.indexOf('now'), 3, isAtLeastGroovy(60) ? DEPRECATED : METHOD_CALL))
+            new HighlightedTypedPosition(contents.indexOf('minute'), 6, GROOVY_CALL),
+            new HighlightedTypedPosition(contents.indexOf('from'), 4, METHOD_CALL),
+            new HighlightedTypedPosition(contents.indexOf('now'), 3, METHOD_CALL))
     }
 
     @Test
@@ -5023,8 +5027,10 @@ final class SemanticHighlightingTests extends GroovyEclipseTestSuite {
             new HighlightedTypedPosition(contents.indexOf('k;'), 1, VARIABLE))
     }
 
-    @Test @Ignore('list and count have been transformed into something, which hampers refactoring and semantic highlighting')
+    @Test
     void testTailCallMethods() {
+        if (notYetImplemented(this)) return // list and count have been transformed, which hampers refactoring and semantic highlighting
+
         String contents = '''\
             |import groovy.transform.*
             |class X {

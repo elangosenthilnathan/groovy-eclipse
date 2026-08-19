@@ -1,5 +1,5 @@
 /*
- * Copyright 2009-2020 the original author or authors.
+ * Copyright 2009-2026 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,6 +14,9 @@
  * limitations under the License.
  */
 package org.codehaus.groovy.eclipse.core.test
+
+import static org.eclipse.jdt.groovy.core.tests.GroovyBundle.isRecoveryParser
+import static org.junit.Assume.assumeTrue
 
 import org.codehaus.groovy.ast.ModuleNode
 import org.codehaus.groovy.eclipse.core.compiler.GroovySnippetCompiler
@@ -33,6 +36,7 @@ final class UnrecoverableErrorTests extends GroovyEclipseTestSuite {
     @Before
     void setUp() {
         compiler = getGroovySnippetCompiler()
+        assumeTrue(isRecoveryParser())
     }
 
     @After

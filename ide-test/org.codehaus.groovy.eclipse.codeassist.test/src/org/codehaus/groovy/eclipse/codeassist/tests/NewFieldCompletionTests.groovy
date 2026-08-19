@@ -1,5 +1,5 @@
 /*
- * Copyright 2009-2019 the original author or authors.
+ * Copyright 2009-2026 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,6 +14,9 @@
  * limitations under the License.
  */
 package org.codehaus.groovy.eclipse.codeassist.tests
+
+import static org.eclipse.jdt.groovy.core.tests.GroovyBundle.isRecoveryParser
+import static org.junit.Assume.assumeTrue
 
 import org.eclipse.jface.text.contentassist.ICompletionProposal
 import org.junit.Test
@@ -32,9 +35,11 @@ final class NewFieldCompletionTests extends CompletionTestSuite {
 
     @Test
     void testNewField1() {
+        assumeTrue(isRecoveryParser())
+
         String contents =
-                'import javax.swing.text.html.HTMLFrameHyperlinkEvent;\n' +
-                'class SomeClass {\nHTMLFrameHyperlinkEvent  }'
+            'import javax.swing.text.html.HTMLFrameHyperlinkEvent;\n' +
+            'class SomeClass {\nHTMLFrameHyperlinkEvent  }'
 
         checkProposalApplication(contents, getIndexOf(contents, 'HTMLFrameHyperlinkEvent '),
             [
@@ -60,6 +65,8 @@ final class NewFieldCompletionTests extends CompletionTestSuite {
 
     @Test
     void testNewField2() {
+        assumeTrue(isRecoveryParser())
+
         String contents =
             'class SomeClass {\njavax.swing.text.html.HTMLFrameHyperlinkEvent  }'
 
@@ -94,6 +101,8 @@ final class NewFieldCompletionTests extends CompletionTestSuite {
 
     @Test
     void testNewField4() {
+        assumeTrue(isRecoveryParser())
+
         String contents =
             'import javax.swing.text.html.HTMLFrameHyperlinkEvent;\n' +
             'class SomeClass {\nHTMLFrameHyperlinkEvent        }'
@@ -136,6 +145,8 @@ final class NewFieldCompletionTests extends CompletionTestSuite {
 
     @Test
     void testNewField6() {
+        assumeTrue(isRecoveryParser())
+
         String contents =
             'import javax.swing.text.html.HTMLFrameHyperlinkEvent;\n' +
             'class SomeClass {\nHTMLFrameHyperlinkEvent[]        }'
@@ -164,6 +175,8 @@ final class NewFieldCompletionTests extends CompletionTestSuite {
 
     @Test
     void testNewField7() {
+        assumeTrue(isRecoveryParser())
+
         String contents =
             'import javax.swing.text.html.HTMLFrameHyperlinkEvent;\n' +
             'class SomeClass {\nHTMLFrameHyperlinkEvent  [][]        }'

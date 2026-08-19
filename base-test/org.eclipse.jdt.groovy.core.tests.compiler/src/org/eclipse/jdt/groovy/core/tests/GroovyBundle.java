@@ -1,5 +1,5 @@
 /*
- * Copyright 2009-2025 the original author or authors.
+ * Copyright 2009-2026 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,10 +20,10 @@ import org.osgi.framework.Version;
 
 public abstract class GroovyBundle {
 
-    private static final int GROOVY_LEVEL;
+    private static final int GROOVY_LEVEL; // 30, 40, 50, 51, ...
     static {
         Version version = Platform.getBundle("org.codehaus.groovy").getVersion();
-        GROOVY_LEVEL = (version.getMajor() * 10 + version.getMinor());
+        GROOVY_LEVEL = (version.getMajor() * 10) + version.getMinor();
     }
 
     public static boolean isAtLeastGroovy(int level) {
@@ -31,6 +31,10 @@ public abstract class GroovyBundle {
     }
 
     public static boolean isParrotParser() {
-        return (isAtLeastGroovy(30) && Boolean.parseBoolean(System.getProperty("groovy.antlr4", "true")));
+        return Boolean.parseBoolean(System.getProperty("groovy.antlr4", "true"));
+    }
+
+    public static boolean isRecoveryParser() {
+        return !isParrotParser() || (isAtLeastGroovy(60) && Boolean.getBoolean("groovy.parser.error.recovery"));
     }
 }

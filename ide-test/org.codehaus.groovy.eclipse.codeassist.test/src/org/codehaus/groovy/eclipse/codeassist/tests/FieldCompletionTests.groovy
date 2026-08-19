@@ -16,6 +16,8 @@
 package org.codehaus.groovy.eclipse.codeassist.tests
 
 import static org.eclipse.jdt.groovy.core.tests.GroovyBundle.isAtLeastGroovy
+import static org.eclipse.jdt.groovy.core.tests.GroovyBundle.isRecoveryParser
+import static org.junit.Assume.assumeTrue
 
 import groovy.test.NotYetImplemented
 
@@ -42,6 +44,8 @@ final class FieldCompletionTests extends CompletionTestSuite {
 
     @Test
     void testSpaces1() {
+        assumeTrue(isRecoveryParser())
+
         String contents = '''\
             |class SomeClass {
             |  int someProperty
@@ -56,6 +60,8 @@ final class FieldCompletionTests extends CompletionTestSuite {
 
     @Test
     void testSpaces2() {
+        assumeTrue(isRecoveryParser())
+
         String contents = '''\
             |class SomeClass {
             |  int someProperty
@@ -70,6 +76,8 @@ final class FieldCompletionTests extends CompletionTestSuite {
 
     @Test
     void testSpaces3() {
+        assumeTrue(isRecoveryParser())
+
         String contents = '''\
             |class SomeClass {
             |  int someProperty
@@ -84,6 +92,8 @@ final class FieldCompletionTests extends CompletionTestSuite {
 
     @Test // GRECLIPSE-616
     void testProperties1() {
+        assumeTrue(isRecoveryParser())
+
         String contents = '''\
             |class Other {
             |  def x
@@ -98,6 +108,8 @@ final class FieldCompletionTests extends CompletionTestSuite {
 
     @Test
     void testProperties1a() {
+        assumeTrue(isRecoveryParser())
+
         String contents = '''\
             |class Other {
             |  def x
@@ -113,6 +125,8 @@ final class FieldCompletionTests extends CompletionTestSuite {
 
     @Test
     void testProperties2() {
+        assumeTrue(isRecoveryParser())
+
         String contents = '''\
             |class Other {
             |  public def x
@@ -127,6 +141,8 @@ final class FieldCompletionTests extends CompletionTestSuite {
 
     @Test
     void testProperties2a() {
+        assumeTrue(isRecoveryParser())
+
         String contents = '''\
             |class Other {
             |  public def x
@@ -142,6 +158,8 @@ final class FieldCompletionTests extends CompletionTestSuite {
 
     @Test
     void testProperties3() {
+        assumeTrue(isRecoveryParser())
+
         String contents = '''\
             |class Other {
             |  private def x
@@ -156,6 +174,8 @@ final class FieldCompletionTests extends CompletionTestSuite {
 
     @Test
     void testProperties3a() {
+        assumeTrue(isRecoveryParser())
+
         String contents = '''\
             |class Other {
             |  private def x
@@ -171,6 +191,8 @@ final class FieldCompletionTests extends CompletionTestSuite {
 
     @Test
     void testProperties4() {
+        assumeTrue(isRecoveryParser())
+
         String contents = '''\
             |class Other {
             |  public static final int x = 9
@@ -185,6 +207,8 @@ final class FieldCompletionTests extends CompletionTestSuite {
 
     @Test
     void testProperties4a() {
+        assumeTrue(isRecoveryParser())
+
         String contents = '''\
             |class Other {
             |  public static final int x = 9
@@ -200,6 +224,8 @@ final class FieldCompletionTests extends CompletionTestSuite {
 
     @Test
     void testProperties5() {
+        assumeTrue(isRecoveryParser())
+
         addJavaSource 'class Other { int x = 9; }', 'Other'
 
         String contents = 'new Other().'
@@ -211,6 +237,8 @@ final class FieldCompletionTests extends CompletionTestSuite {
 
     @Test
     void testProperties5a() {
+        assumeTrue(isRecoveryParser())
+
         addJavaSource 'class Other { int x = 9; }', 'Other'
 
         String contents = 'Other o; o.'
@@ -222,6 +250,8 @@ final class FieldCompletionTests extends CompletionTestSuite {
 
     @Test // GRECLIPSE-1162
     void testProperties6() {
+        assumeTrue(isRecoveryParser())
+
         String contents = 'class Other { boolean x }\n new Other().'
         ICompletionProposal[] proposals = createProposalsAtOffset(contents, getIndexOf(contents, '.'))
         proposalExists(proposals, 'setX(boolean value) : void', 1)
@@ -232,6 +262,8 @@ final class FieldCompletionTests extends CompletionTestSuite {
 
     @Test // GRECLIPSE-1162
     void testProperties6a() {
+        assumeTrue(isRecoveryParser())
+
         String contents = 'class Other { boolean xx }\n new Other().'
         ICompletionProposal[] proposals = createProposalsAtOffset(contents, getIndexOf(contents, '.'))
         proposalExists(proposals, 'setXx(boolean value) : void', 1)
@@ -242,6 +274,8 @@ final class FieldCompletionTests extends CompletionTestSuite {
 
     @Test // GRECLIPSE-1162
     void testProperties7() {
+        assumeTrue(isRecoveryParser())
+
         String contents = 'class Other { boolean isX() {} }\n new Other().'
         ICompletionProposal[] proposals = createProposalsAtOffset(contents, getIndexOf(contents, '.'))
         proposalExists(proposals, 'isX() : boolean', 1)
@@ -250,6 +284,8 @@ final class FieldCompletionTests extends CompletionTestSuite {
 
     @Test // GRECLIPSE-1162
     void testProperties7a() {
+        assumeTrue(isRecoveryParser())
+
         String contents = 'class Other { boolean isXx() {} }\n new Other().'
         ICompletionProposal[] proposals = createProposalsAtOffset(contents, getIndexOf(contents, '.'))
         proposalExists(proposals, 'isXx() : boolean', 1)
@@ -258,6 +294,8 @@ final class FieldCompletionTests extends CompletionTestSuite {
 
     @Test // GRECLIPSE-1162
     void testProperties8() {
+        assumeTrue(isRecoveryParser())
+
         String contents = 'class Other { boolean isxx() {} }\n new Other().'
         ICompletionProposal[] proposals = createProposalsAtOffset(contents, getIndexOf(contents, '.'))
         proposalExists(proposals, 'isxx() : boolean', 1)
@@ -266,6 +304,8 @@ final class FieldCompletionTests extends CompletionTestSuite {
 
     @Test // GRECLIPSE-1162
     void testProperties9() {
+        assumeTrue(isRecoveryParser())
+
         String contents = 'class Other { boolean getxx() {} }\n new Other().'
         ICompletionProposal[] proposals = createProposalsAtOffset(contents, getIndexOf(contents, '.'))
         proposalExists(proposals, 'getxx() : boolean', 1)
@@ -274,6 +314,8 @@ final class FieldCompletionTests extends CompletionTestSuite {
 
     @Test // GRECLIPSE-1698
     void testProperties10() {
+        assumeTrue(isRecoveryParser())
+
         String contents = 'class Other { boolean getXXxx() {} }\n new Other().'
         ICompletionProposal[] proposals = createProposalsAtOffset(contents, getIndexOf(contents, '.'))
         proposalExists(proposals, 'getXXxx() : boolean', 1)
@@ -282,6 +324,8 @@ final class FieldCompletionTests extends CompletionTestSuite {
 
     @Test // GRECLIPSE-1698
     void testProperties11() {
+        assumeTrue(isRecoveryParser())
+
         String contents = 'class Other { boolean isXXxx() {} }\n new Other().'
         ICompletionProposal[] proposals = createProposalsAtOffset(contents, getIndexOf(contents, '.'))
         proposalExists(proposals, 'isXXxx() : boolean', 1)
@@ -290,6 +334,8 @@ final class FieldCompletionTests extends CompletionTestSuite {
 
     @Test // GRECLIPSE-1698
     void testProperties12() {
+        assumeTrue(isRecoveryParser())
+
         String contents = 'class Other { boolean getxXxx() {} }\n new Other().'
         ICompletionProposal[] proposals = createProposalsAtOffset(contents, getIndexOf(contents, '.'))
         proposalExists(proposals, 'getxXxx() : boolean', 1)
@@ -298,6 +344,8 @@ final class FieldCompletionTests extends CompletionTestSuite {
 
     @Test // GRECLIPSE-1698
     void testProperties13() {
+        assumeTrue(isRecoveryParser())
+
         String contents = 'class Other { boolean isxXxx() {} }\n new Other().'
         ICompletionProposal[] proposals = createProposalsAtOffset(contents, getIndexOf(contents, '.'))
         proposalExists(proposals, 'isxXxx() : boolean', 1)
@@ -306,6 +354,8 @@ final class FieldCompletionTests extends CompletionTestSuite {
 
     @Test // https://github.com/groovy/groovy-eclipse/issues/651
     void testProperties14() {
+        assumeTrue(isRecoveryParser())
+
         String contents = '''\
             |class Other {
             |  void setXxx(String xxx) {}
@@ -319,6 +369,8 @@ final class FieldCompletionTests extends CompletionTestSuite {
 
     @Test
     void testProperties15() {
+        assumeTrue(isRecoveryParser())
+
         String contents = '''\
             |class C {
             |  def x = 42
@@ -333,6 +385,8 @@ final class FieldCompletionTests extends CompletionTestSuite {
 
     @Test // https://github.com/groovy/groovy-eclipse/issues/1080
     void testProperties16() {
+        assumeTrue(isRecoveryParser())
+
         String contents = '''\
             |class C {
             |  def x
@@ -350,6 +404,8 @@ final class FieldCompletionTests extends CompletionTestSuite {
 
     @Test
     void testProperties16a() {
+        assumeTrue(isRecoveryParser())
+
         String contents = '''\
             |class C {
             |  def m() {
@@ -367,6 +423,8 @@ final class FieldCompletionTests extends CompletionTestSuite {
 
     @Test // https://github.com/groovy/groovy-eclipse/issues/1080
     void testProperties17() {
+        assumeTrue(isRecoveryParser())
+
         String contents = '''\
             |import javax.annotation.PostConstruct
             |class C {
@@ -386,6 +444,8 @@ final class FieldCompletionTests extends CompletionTestSuite {
 
     @Test
     void testProperties17a() {
+        assumeTrue(isRecoveryParser())
+
         String contents = '''\
             |class C {
             |  def x
@@ -440,6 +500,8 @@ final class FieldCompletionTests extends CompletionTestSuite {
 
     @Test
     void testClosure1() {
+        assumeTrue(isRecoveryParser())
+
         String contents = '''\
             |class Other {
             |  def xxx = { a, b -> }
@@ -453,6 +515,8 @@ final class FieldCompletionTests extends CompletionTestSuite {
 
     @Test
     void testClosure2() {
+        assumeTrue(isRecoveryParser())
+
         String contents = '''\
             |class Other {
             |  def xxx = { int a, int b -> }
@@ -466,6 +530,8 @@ final class FieldCompletionTests extends CompletionTestSuite {
 
     @Test
     void testClosure3() {
+        assumeTrue(isRecoveryParser())
+
         String contents = '''\
             |class Other {
             |  def xxx = { }
@@ -952,6 +1018,8 @@ final class FieldCompletionTests extends CompletionTestSuite {
 
     @Test
     void testEnumReceiver1() {
+        assumeTrue(isRecoveryParser())
+
         addJavaSource '''\
             |enum E {
             |  CONST;
@@ -967,6 +1035,8 @@ final class FieldCompletionTests extends CompletionTestSuite {
 
     @Test
     void testEnumReceiver1a() {
+        assumeTrue(isRecoveryParser())
+
         addJavaSource '''\
             |enum E {
             |  CONST;
@@ -982,6 +1052,8 @@ final class FieldCompletionTests extends CompletionTestSuite {
 
     @Test
     void testEnumReceiver1b() {
+        assumeTrue(isRecoveryParser())
+
         addJavaSource '''\
             |enum E {
             |  CONST;
@@ -1016,7 +1088,7 @@ final class FieldCompletionTests extends CompletionTestSuite {
             |'''.stripMargin())
     }
 
-    @Test @NotYetImplemented
+    @NotYetImplemented @Test
     void testEnumReceiver2a() {
         addJavaSource '''\
             |public enum Color {
@@ -1089,6 +1161,8 @@ final class FieldCompletionTests extends CompletionTestSuite {
 
     @Test // GRECLIPSE-1175
     void testInitializer() {
+        assumeTrue(isRecoveryParser())
+
         String contents = '''\
             |class MyClass {
             |  def something = Class.
@@ -1107,6 +1181,8 @@ final class FieldCompletionTests extends CompletionTestSuite {
 
     @Test
     void testStaticFields1() {
+        assumeTrue(isRecoveryParser())
+
         String contents = '''\
             |import java.util.regex.Pattern
             |Pattern.
@@ -1266,6 +1342,8 @@ final class FieldCompletionTests extends CompletionTestSuite {
 
     @Test
     void testRangeExpressionCompletion1() {
+        assumeTrue(isRecoveryParser())
+
         String contents = '''\
             |(0..1).
             |'''.stripMargin()
@@ -1277,6 +1355,8 @@ final class FieldCompletionTests extends CompletionTestSuite {
 
     @Test
     void testRangeExpressionCompletion2() {
+        assumeTrue(isRecoveryParser())
+
         setJavaPreference(PreferenceConstants.CODEASSIST_AUTOACTIVATION, true)
         String contents = '''\
             |def range = 0.

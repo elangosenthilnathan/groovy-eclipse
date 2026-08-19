@@ -1,5 +1,5 @@
 /*
- * Copyright 2009-2020 the original author or authors.
+ * Copyright 2009-2026 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,7 +15,9 @@
  */
 package org.codehaus.groovy.eclipse.test.core.util
 
+import static org.eclipse.jdt.groovy.core.tests.GroovyBundle.isRecoveryParser
 import static org.junit.Assert.assertEquals
+import static org.junit.Assume.assumeTrue
 
 import groovy.transform.CompileStatic
 
@@ -310,12 +312,14 @@ final class ExpressionFinderTests {
 
     @Test
     void testWithLineComment2() {
+        assumeTrue(isRecoveryParser())
         String test = '//\t\thelp.\n\t\ta.'
         doFind(test, 'a.', test.length() - 1)
     }
 
     @Test
     void testWithLineComment3() {
+        assumeTrue(isRecoveryParser())
         String test = 'def a = 10\n//\t\thelp.\n\t\ta.'
         doFind(test, 'a.', test.length() - 1)
     }

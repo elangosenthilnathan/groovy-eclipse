@@ -17,7 +17,9 @@ package org.eclipse.jdt.groovy.core.tests.basic;
 
 import static org.eclipse.jdt.groovy.core.tests.GroovyBundle.isAtLeastGroovy;
 import static org.eclipse.jdt.groovy.core.tests.GroovyBundle.isParrotParser;
+import static org.eclipse.jdt.groovy.core.tests.GroovyBundle.isRecoveryParser;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 import static org.junit.Assume.assumeTrue;
@@ -1938,6 +1940,8 @@ public final class GroovySimpleTests extends GroovyCompilerTestSuite {
 
     @Test
     public void testIncompleteCharacterEscape_GRE986() {
+        assumeTrue(isRecoveryParser());
+
         //@formatter:off
         String[] sources = {
             "A.groovy",
@@ -2265,13 +2269,14 @@ public final class GroovySimpleTests extends GroovyCompilerTestSuite {
         };
         //@formatter:on
 
-        runNegativeTest(sources, isAtLeastGroovy(50) ?
+        runNegativeTest(sources, !isAtLeastGroovy(50) ? ""
+            :
             "----------\n" +
             "1. WARNING in Foo.groovy (at line 2)\n" +
             "\tdef something = 32\n" +
             "\t^\n" +
             "Groovy:Property something cannot override final method getSomething() of class Bar\n" +
-            "----------\n" : "");
+            "----------\n");
     }
 
     @Test // GROOVY-11548
@@ -3457,15 +3462,24 @@ public final class GroovySimpleTests extends GroovyCompilerTestSuite {
         };
         //@formatter:on
 
-        runNegativeTest(sources,
-            "----------\n" +
-            "1. ERROR in X.groovy (at line 2)\n" +
-            "\tbreak words\n" +
-            "\t^^^^^^^^^^^\n" +
-            "Groovy:" + (!isParrotParser()
-                ? "the break statement with named label is only allowed inside " + (isAtLeastGroovy(60) ? "control statements" : "loops") + "\n"
-                : "break statement is only allowed inside loops or switches\n") +
-            "----------\n");
+        runNegativeTest(sources, """
+            ----------
+            1. ERROR in X.groovy (at line 2)
+            \tbreak words
+            \t^^^^^^^^^^^
+            Groovy:%s
+            ----------
+            """.formatted(
+                //@formatter:off
+                isAtLeastGroovy(60) ?
+                "the break statement with named label is only allowed inside control statements"
+                : !isParrotParser() ?
+                "the break statement with named label is only allowed inside loops"
+                :
+                "break statement is only allowed inside loops or switches"
+                //@formatter:on
+            )
+        );
     }
 
     @Test
@@ -3481,19 +3495,21 @@ public final class GroovySimpleTests extends GroovyCompilerTestSuite {
         };
         //@formatter:on
 
-        runNegativeTest(sources,
-            "----------\n" +
-            "1. ERROR in ContinueTestCase.groovy (at line 3)\n" +
-            "\tcontinue;\n" +
-            "\t^^^^^^^^\n" +
-            "Groovy:" + (!isParrotParser()
-                ? "the continue statement is only allowed inside loops\n"
-                : "continue statement is only allowed inside loops\n") +
-            "----------\n");
+        runNegativeTest(sources, """
+            ----------
+            1. ERROR in ContinueTestCase.groovy (at line 3)
+            \tcontinue;
+            \t^^^^^^^^
+            Groovy:%scontinue statement is only allowed inside loops
+            ----------
+            """.formatted(!isParrotParser() || isAtLeastGroovy(60) ? "the " : "")
+        );
     }
 
     @Test
     public void testMissingContext_GRE308() {
+        assumeTrue(isRecoveryParser());
+
         //@formatter:off
         String[] sources = {
             "DibDabs.groovy",
@@ -3515,8 +3531,10 @@ public final class GroovySimpleTests extends GroovyCompilerTestSuite {
             "----------\n");
     }
 
-    @Test // FIXASC less than ideal underlining for error location
+    @Test
     public void testMissingContext_GRE308_2() {
+        assumeTrue(isRecoveryParser());
+
         //@formatter:off
         String[] sources = {
             "DibDabs.groovy",
@@ -3563,6 +3581,8 @@ public final class GroovySimpleTests extends GroovyCompilerTestSuite {
 
     @Test
     public void testSloppyScript_GRE323_2() {
+        assumeTrue(isRecoveryParser());
+
         //@formatter:off
         String[] sources = {
             "Foo.groovy",
@@ -3607,6 +3627,8 @@ public final class GroovySimpleTests extends GroovyCompilerTestSuite {
 
     @Test
     public void testSloppyScript_GRE323_4() {
+        assumeTrue(isRecoveryParser());
+
         //@formatter:off
         String[] sources = {
             "Foo.groovy",
@@ -3635,6 +3657,8 @@ public final class GroovySimpleTests extends GroovyCompilerTestSuite {
 
     @Test
     public void testSloppyScript_GRE323_4b() {
+        assumeTrue(isRecoveryParser());
+
         //@formatter:off
         String[] sources = {
             "Run.java",
@@ -3674,6 +3698,8 @@ public final class GroovySimpleTests extends GroovyCompilerTestSuite {
 
     @Test
     public void testSloppyScript_GRE323_5() {
+        assumeTrue(isRecoveryParser());
+
         //@formatter:off
         String[] sources = {
             "Foo.groovy",
@@ -3708,6 +3734,8 @@ public final class GroovySimpleTests extends GroovyCompilerTestSuite {
 
     @Test
     public void testSloppyScript_GRE323_5b() {
+        assumeTrue(isRecoveryParser());
+
         //@formatter:off
         String[] sources = {
             "Foo.groovy",
@@ -3760,6 +3788,73 @@ public final class GroovySimpleTests extends GroovyCompilerTestSuite {
         //@formatter:on
 
         runConformTest(sources, "DEF");
+    }
+
+    @Test
+    public void testUnrecoverableErrors_GRE755_1() {
+        assumeTrue(isRecoveryParser());
+
+        //@formatter:off
+        String[] sources = {
+            "X.groovy",
+            "class X {\n" +
+            "  def x=\"\n" +
+            "}\n",
+        };
+        //@formatter:on
+
+        runNegativeTest(sources,
+            "----------\n" +
+            "1. ERROR in X.groovy (at line 2)\n" +
+            "\tdef x=\"\n" + (isParrotParser()
+            ?
+            "\t      ^\n" +
+            "Groovy:Unexpected character: '\"'\n"
+            :
+            "}\n" +
+            "\t       ^\n" +
+            "Groovy:expecting anything but \'\'\\n\'\'; got it anyway\n"
+            ) +
+            "----------\n");
+
+        assertTrue(getModuleNode("X.groovy").encounteredUnrecoverableError());
+    }
+
+    @Test
+    public void testUnrecoverableErrors_GRE755_2() {
+        //@formatter:off
+        String[] sources = {
+            "X.groovy",
+            "package a\n" +
+            "\n" +
+            "def foo(Nuthin\n",
+        };
+        //@formatter:on
+
+        runNegativeTest(sources, !isParrotParser() ? """
+            ----------
+            1. ERROR in X.groovy (at line 3)
+            \tdef foo(Nuthin
+            \t        ^
+            Groovy:unexpected token: Nuthin
+            ----------
+            """ : """
+            ----------
+            1. ERROR in X.groovy (at line 0)
+            \tpackage a
+            \t^
+            Groovy:General error during conversion: groovyjarjarantlr4.v4.runtime.InputMismatchException
+            ----------
+            2. ERROR in X.groovy (at line %d)
+            \tdef foo(Nuthin
+
+            \t              ^
+            Groovy:%s
+            ----------
+            """.formatted(isAtLeastGroovy(60) ? 3 : 4, isAtLeastGroovy(60) ? "Missing ')'" : "Unexpected input: '<EOF>'")
+        );
+
+        assertFalse(getModuleNode("X.groovy").encounteredUnrecoverableError());
     }
 
     @Test
@@ -7214,8 +7309,10 @@ public final class GroovySimpleTests extends GroovyCompilerTestSuite {
             "----------\n");
     }
 
-    @Test // TODO: poor positional error for invalid field name
+    @Test
     public void testFieldPositions2() {
+        assumeTrue(isRecoveryParser());
+
         //@formatter:off
         String[] sources = {
             "p/C.groovy",
@@ -7454,7 +7551,7 @@ public final class GroovySimpleTests extends GroovyCompilerTestSuite {
         };
         //@formatter:on
 
-        runNegativeTest(sources, "");
+        runConformTest(sources, "hello world");
     }
 
     @Test
@@ -7469,13 +7566,17 @@ public final class GroovySimpleTests extends GroovyCompilerTestSuite {
         };
         //@formatter:on
 
-        runNegativeTest(sources,
-            "----------\n" +
-            "1. ERROR in Script.groovy (at line 2)\n" +
-            "\t#! nix-shell -i groovy -p groovy\n" +
-            "\t^\n" +
-            "Groovy:unexpected char: '#'\n" +
-            "----------\n");
+        if (isParrotParser()) {
+            runConformTest(sources, "hello world");
+        } else {
+            runNegativeTest(sources,
+                "----------\n" +
+                "1. ERROR in Script.groovy (at line 2)\n" +
+                "\t#! nix-shell -i groovy -p groovy\n" +
+                "\t^\n" +
+                "Groovy:unexpected char: '#'\n" +
+                "----------\n");
+        }
     }
 
     @Test

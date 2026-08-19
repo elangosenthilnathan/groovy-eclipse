@@ -598,10 +598,10 @@ final class CodeSelectMethodsTests extends BrowsingTestSuite {
             |  RED, BLACK
             |}
             |enum Suit {
-            |  CLUBS(Color.BLACK),
-            |  DIAMONDS(Color.RED),
-            |  HEARTS(Color.RED),
-            |  SPADES(Color.BLACK),
+            |  CLUBS   (Color.BLACK),
+            |  DIAMONDS(Color.RED  ),
+            |  HEARTS  (Color.RED  ),
+            |  SPADES  (Color.BLACK);
             |
             |  final Color color
             |  Suit(Color color) {

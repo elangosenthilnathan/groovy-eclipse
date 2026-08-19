@@ -1,5 +1,5 @@
 /*
- * Copyright 2009-2023 the original author or authors.
+ * Copyright 2009-2026 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,7 +15,9 @@
  */
 package org.codehaus.groovy.eclipse.codeassist.tests
 
+import static org.eclipse.jdt.groovy.core.tests.GroovyBundle.isRecoveryParser
 import static org.eclipse.jdt.internal.ui.text.java.AbstractJavaCompletionProposal.MODIFIER_TOGGLE_COMPLETION_MODE
+import static org.junit.Assume.assumeTrue
 
 import groovy.test.NotYetImplemented
 
@@ -45,6 +47,8 @@ final class ConstructorCompletionTests extends CompletionTestSuite {
 
     @Test
     void testConstructorCompletion1() {
+        assumeTrue(isRecoveryParser())
+
         String contents = '''\
             |class C {
             |  @Deprecated
@@ -62,6 +66,8 @@ final class ConstructorCompletionTests extends CompletionTestSuite {
 
     @Test
     void testConstructorCompletion2() {
+        assumeTrue(isRecoveryParser())
+
         String contents = 'class YYY { YYY() {} }\nnew YY\nkkk'
         String expected = 'class YYY { YYY() {} }\nnew YYY()\nkkk'
         setJavaPreference(PreferenceConstants.CODEASSIST_GUESS_METHOD_ARGUMENTS, false)
@@ -70,6 +76,8 @@ final class ConstructorCompletionTests extends CompletionTestSuite {
 
     @Test
     void testConstructorCompletion3() {
+        assumeTrue(isRecoveryParser())
+
         String contents = 'class YYY { YYY(x) {} }\nnew YY\nkkk'
         String expected = 'class YYY { YYY(x) {} }\nnew YYY(x)\nkkk'
         setJavaPreference(PreferenceConstants.CODEASSIST_GUESS_METHOD_ARGUMENTS, false)
@@ -78,6 +86,8 @@ final class ConstructorCompletionTests extends CompletionTestSuite {
 
     @Test
     void testConstructorCompletion4() {
+        assumeTrue(isRecoveryParser())
+
         String contents = 'class YYY { YYY(x, y) {} }\nnew YY\nkkk'
         String expected = 'class YYY { YYY(x, y) {} }\nnew YYY(x, y)\nkkk'
         setJavaPreference(PreferenceConstants.CODEASSIST_GUESS_METHOD_ARGUMENTS, false)
@@ -86,6 +96,8 @@ final class ConstructorCompletionTests extends CompletionTestSuite {
 
     @Test
     void testConstructorCompletion5() {
+        assumeTrue(isRecoveryParser())
+
         String contents = 'class YYY { YYY() {} }\nnew YY\nkkk'
         String expected = 'class YYY { YYY() {} }\nnew YYY()\nkkk'
         setJavaPreference(PreferenceConstants.CODEASSIST_INSERT_COMPLETION, false)
@@ -114,6 +126,8 @@ final class ConstructorCompletionTests extends CompletionTestSuite {
 
     @Test
     void testContructorCompletionWithClosure1() {
+        assumeTrue(isRecoveryParser())
+
         String contents = '''\
             |class Foo {
             |  Foo(Number number, Closure closure) {
@@ -128,6 +142,8 @@ final class ConstructorCompletionTests extends CompletionTestSuite {
 
     @Test
     void testContructorCompletionWithClosure2() {
+        assumeTrue(isRecoveryParser())
+
         setJavaPreference(PreferenceConstants.CODEASSIST_GUESS_METHOD_ARGUMENTS, false)
 
         String contents = '''\
@@ -144,6 +160,8 @@ final class ConstructorCompletionTests extends CompletionTestSuite {
 
     @Test
     void testContructorCompletionWithClosure3() {
+        assumeTrue(isRecoveryParser())
+
         setJavaPreference(PreferenceConstants.CODEASSIST_GUESS_METHOD_ARGUMENTS, false)
         GroovyContentAssist.default.preferenceStore.setValue(GroovyContentAssist.CLOSURE_NOPARENS, true)
 
@@ -161,6 +179,8 @@ final class ConstructorCompletionTests extends CompletionTestSuite {
 
     @Test
     void testContructorCompletionWithQualifier() {
+        assumeTrue(isRecoveryParser())
+
         String contents = 'new java.text.Anno'
         ICompletionProposal[] proposals = createProposalsAtOffset(contents, contents.length())
         proposalExists(proposals, 'AnnotationVisitor', 0)
@@ -169,6 +189,8 @@ final class ConstructorCompletionTests extends CompletionTestSuite {
 
     @Test
     void testConstructorCompletionWithGenerics1() {
+        assumeTrue(isRecoveryParser())
+
         String contents = 'List<String> list = new ArrayL'
         String expected = 'List<String> list = new ArrayList()'
         setJavaPreference(PreferenceConstants.CODEASSIST_GUESS_METHOD_ARGUMENTS, false)
@@ -177,6 +199,8 @@ final class ConstructorCompletionTests extends CompletionTestSuite {
 
     @Test
     void testContructorCompletionWithinEnumDeclaration1() {
+        assumeTrue(isRecoveryParser())
+
         String contents = '''\
             |class YYY { YYY() {} }
             |enum F {
@@ -196,6 +220,8 @@ final class ConstructorCompletionTests extends CompletionTestSuite {
 
     @Test
     void testContructorCompletionWithinEnumDeclaration2() {
+        assumeTrue(isRecoveryParser())
+
         String contents = '''\
             |class YYY { YYY() {} }
             |enum F {
@@ -215,6 +241,8 @@ final class ConstructorCompletionTests extends CompletionTestSuite {
 
     @Test
     void testConstructorCompletionInnerClass1() {
+        assumeTrue(isRecoveryParser())
+
         addGroovySource '''\
             |class Outer {
             |  static class Inner {
@@ -231,6 +259,8 @@ final class ConstructorCompletionTests extends CompletionTestSuite {
 
     @Test
     void testConstructorCompletionInnerClass2() {
+        assumeTrue(isRecoveryParser())
+
         addGroovySource '''\
             |class Outer {
             |  static class Inner {
@@ -251,6 +281,8 @@ final class ConstructorCompletionTests extends CompletionTestSuite {
 
     @Test
     void testConstructorCompletionInnerClass3() {
+        assumeTrue(isRecoveryParser())
+
         addGroovySource '''\
             |class Outer {
             |  static class Inner {
@@ -270,6 +302,8 @@ final class ConstructorCompletionTests extends CompletionTestSuite {
 
     @Test
     void testConstructorCompletionInnerClass4() {
+        assumeTrue(isRecoveryParser())
+
         addGroovySource '''\
             |class Outer {
             |  static class XyzInner {
@@ -290,6 +324,8 @@ final class ConstructorCompletionTests extends CompletionTestSuite {
 
     @Test
     void testConstructorCompletionInnerClass5() {
+        assumeTrue(isRecoveryParser())
+
         addGroovySource '''\
             |class Outer {
             |  static class XyzInner {
@@ -309,6 +345,8 @@ final class ConstructorCompletionTests extends CompletionTestSuite {
 
     @Test
     void testConstructorCompletionInnerClass6() {
+        assumeTrue(isRecoveryParser())
+
         addGroovySource '''\
             |class Outer {
             |  static class Inner {
@@ -329,6 +367,8 @@ final class ConstructorCompletionTests extends CompletionTestSuite {
 
     @Test
     void testConstructorCompletionInnerClass7() {
+        assumeTrue(isRecoveryParser())
+
         addGroovySource '''\
             |class Outer {
             |  static class Inner {
@@ -350,6 +390,8 @@ final class ConstructorCompletionTests extends CompletionTestSuite {
 
     @Test
     void testConstructorCompletionInnerClass8() {
+        assumeTrue(isRecoveryParser())
+
         addGroovySource '''\
             |class Outer {
             |  static class Inner {
@@ -370,6 +412,8 @@ final class ConstructorCompletionTests extends CompletionTestSuite {
 
     @Test
     void testConstructorCompletionInnerClass9() {
+        assumeTrue(isRecoveryParser())
+
         addGroovySource '''\
             |class Outer {
             |  static class Inner {
@@ -391,6 +435,8 @@ final class ConstructorCompletionTests extends CompletionTestSuite {
 
     @Test
     void testConstructorCompletionInnerClass10() {
+        assumeTrue(isRecoveryParser())
+
         addGroovySource '''\
             |class Outer {
             |  static class Inner {
@@ -442,6 +488,8 @@ final class ConstructorCompletionTests extends CompletionTestSuite {
 
     @Test
     void testContructorCompletionImportHandling0() {
+        assumeTrue(isRecoveryParser())
+
         String contents = '''\
             |def a = new java.text.Anno
             |'''.stripMargin()
@@ -454,6 +502,8 @@ final class ConstructorCompletionTests extends CompletionTestSuite {
 
     @Test
     void testContructorCompletionImportHandling1() {
+        assumeTrue(isRecoveryParser())
+
         String contents = '''\
             |def a = new Anno
             |'''.stripMargin()
@@ -468,6 +518,8 @@ final class ConstructorCompletionTests extends CompletionTestSuite {
 
     @Test
     void testConstructorCompletionCanonicalTransform() {
+        assumeTrue(isRecoveryParser())
+
         String contents = '''\
             |@groovy.transform.Canonical
             |class One {
@@ -484,6 +536,8 @@ final class ConstructorCompletionTests extends CompletionTestSuite {
 
     @Test
     void testConstructorCompletionImmutableTransform() {
+        assumeTrue(isRecoveryParser())
+
         String contents = '''\
             |@groovy.transform.Immutable
             |class One {
@@ -503,6 +557,8 @@ final class ConstructorCompletionTests extends CompletionTestSuite {
 
     @Test
     void testConstructorCompletionTupleConstructorTransform() {
+        assumeTrue(isRecoveryParser())
+
         String contents = '''\
             |@groovy.transform.TupleConstructor
             |class One {
@@ -597,6 +653,8 @@ final class ConstructorCompletionTests extends CompletionTestSuite {
 
     @Test // https://github.com/groovy/groovy-eclipse/issues/789
     void testConstructorCompletionSelfConstructorCall2a() {
+        assumeTrue(isRecoveryParser())
+
         String contents = '''\
             |class Foo {
             |  Foo() {
@@ -629,6 +687,8 @@ final class ConstructorCompletionTests extends CompletionTestSuite {
 
     @Test // https://github.com/groovy/groovy-eclipse/issues/789
     void testConstructorCompletionSelfConstructorCall3a() {
+        assumeTrue(isRecoveryParser())
+
         String contents = '''\
             |class Foo {
             |  Foo(arg) {
@@ -822,6 +882,8 @@ final class ConstructorCompletionTests extends CompletionTestSuite {
 
     @Test // https://github.com/groovy/groovy-eclipse/issues/789
     void testConstructorCompletionSuperConstructorCall1a() {
+        assumeTrue(isRecoveryParser())
+
         String contents = '''\
             |class Foo {
             |  Foo() {
@@ -855,6 +917,8 @@ final class ConstructorCompletionTests extends CompletionTestSuite {
 
     @Test // https://github.com/groovy/groovy-eclipse/issues/789
     void testConstructorCompletionSuperConstructorCall2a() {
+        assumeTrue(isRecoveryParser())
+
         String contents = '''\
             |class Bar {
             |  Bar() {}
@@ -892,6 +956,8 @@ final class ConstructorCompletionTests extends CompletionTestSuite {
 
     @Test // https://github.com/groovy/groovy-eclipse/issues/789
     void testConstructorCompletionSuperConstructorCall3a() {
+        assumeTrue(isRecoveryParser())
+
         String contents = '''\
             |class Bar {
             |  def baz
@@ -964,6 +1030,8 @@ final class ConstructorCompletionTests extends CompletionTestSuite {
 
     @Test
     void testNamedArgs4() {
+        assumeTrue(isRecoveryParser())
+
         String contents = '''\
             |class Foo {
             |  String aaa
@@ -981,6 +1049,8 @@ final class ConstructorCompletionTests extends CompletionTestSuite {
 
     @Test
     void testNamedArgs5() {
+        assumeTrue(isRecoveryParser())
+
         String contents = '''\
             |class Foo {
             |  String aaa

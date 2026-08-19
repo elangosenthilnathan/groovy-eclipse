@@ -1,5 +1,5 @@
 /*
- * Copyright 2009-2023 the original author or authors.
+ * Copyright 2009-2026 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,6 +14,10 @@
  * limitations under the License.
  */
 package org.codehaus.groovy.eclipse.codeassist.tests
+
+import static org.eclipse.jdt.groovy.core.tests.GroovyBundle.isParrotParser
+import static org.eclipse.jdt.groovy.core.tests.GroovyBundle.isRecoveryParser
+import static org.junit.Assume.assumeTrue
 
 import groovy.test.NotYetImplemented
 import groovy.transform.stc.ClosureParams
@@ -63,16 +67,22 @@ final class ContentAssistLocationTests extends CompletionTestSuite {
 
     @Test
     void testStatement6() {
+        assumeTrue(isRecoveryParser())
+
         assertLocation('def x = #', ContentAssistLocation.STATEMENT)
     }
 
     @Test
     void testStatement7() {
+        assumeTrue(isRecoveryParser())
+
         assertLocation('def x = #;', ContentAssistLocation.STATEMENT)
     }
 
     @Test
     void testStatement8() {
+        assumeTrue(isRecoveryParser())
+
         assertLocation('def x = #\n', ContentAssistLocation.STATEMENT)
     }
 
@@ -244,6 +254,8 @@ final class ContentAssistLocationTests extends CompletionTestSuite {
 
     @Test
     void testStatement25() {
+        assumeTrue(isRecoveryParser())
+
         String contents = '''\
             |def a, b
             |def x = true ? y#
@@ -256,6 +268,8 @@ final class ContentAssistLocationTests extends CompletionTestSuite {
 
     @Test
     void testStatement26() {
+        assumeTrue(isRecoveryParser())
+
         String contents = '''\
             |0..#
             |'''.stripMargin()
@@ -266,6 +280,8 @@ final class ContentAssistLocationTests extends CompletionTestSuite {
 
     @Test
     void testStatement27() {
+        assumeTrue(isRecoveryParser())
+
         String contents = '''\
             |0..<#
             |'''.stripMargin()
@@ -317,6 +333,8 @@ final class ContentAssistLocationTests extends CompletionTestSuite {
 
     @Test
     void testStatement31a() {
+        assumeTrue(isRecoveryParser())
+
         addGroovySource 'enum E { ONE, TWO, THREE }'
         String contents = '''\
             |void meth(E e) {
@@ -333,6 +351,8 @@ final class ContentAssistLocationTests extends CompletionTestSuite {
 
     @Test
     void testStatement32() {
+        assumeTrue(isRecoveryParser())
+
         addGroovySource 'enum E { ONE, TWO, THREE }'
         String contents = '''\
             |void meth(E e) {
@@ -350,6 +370,8 @@ final class ContentAssistLocationTests extends CompletionTestSuite {
 
     @Test
     void testStatement32a() {
+        assumeTrue(isRecoveryParser())
+
         addGroovySource 'enum E { ONE, TWO, THREE }'
         String contents = '''\
             |void meth(E e) {
@@ -366,6 +388,8 @@ final class ContentAssistLocationTests extends CompletionTestSuite {
 
     @Test
     void testStatement33() {
+        assumeTrue(isRecoveryParser())
+
         addGroovySource 'enum E { ONE, TWO, THREE }'
         String contents = '''\
             |void meth(E e) {
@@ -384,6 +408,8 @@ final class ContentAssistLocationTests extends CompletionTestSuite {
 
     @Test
     void testStatement33a() {
+        assumeTrue(isRecoveryParser())
+
         addGroovySource 'enum E { ONE, TWO, THREE }'
         String contents = '''\
             |void meth(E e) {
@@ -401,6 +427,8 @@ final class ContentAssistLocationTests extends CompletionTestSuite {
 
     @Test
     void testStatement34() {
+        assumeTrue(isRecoveryParser())
+
         addGroovySource 'enum E { ONE, TWO, THREE }'
         String contents = '''\
             |void meth(E e) {
@@ -419,6 +447,8 @@ final class ContentAssistLocationTests extends CompletionTestSuite {
 
     @Test
     void testStatement34a() {
+        assumeTrue(isRecoveryParser())
+
         addGroovySource 'enum E { ONE, TWO, THREE }'
         String contents = '''\
             |void meth(E e) {
@@ -436,6 +466,8 @@ final class ContentAssistLocationTests extends CompletionTestSuite {
 
     @Test
     void testStatement35() {
+        assumeTrue(isRecoveryParser())
+
         addGroovySource 'enum E { ONE, TWO, THREE }'
         String contents = '''\
             |void meth(E e) {
@@ -455,6 +487,8 @@ final class ContentAssistLocationTests extends CompletionTestSuite {
 
     @Test
     void testStatement35a() {
+        assumeTrue(isRecoveryParser())
+
         addGroovySource 'enum E { ONE, TWO, THREE }'
         String contents = '''\
             |void meth(E e) {
@@ -473,6 +507,8 @@ final class ContentAssistLocationTests extends CompletionTestSuite {
 
     @Test
     void testStatement36() {
+        assumeTrue(isRecoveryParser())
+
         addGroovySource 'enum E { ONE, TWO, THREE }'
         String contents = '''\
             |void meth(E e) {
@@ -497,21 +533,29 @@ final class ContentAssistLocationTests extends CompletionTestSuite {
 
     @Test
     void testExpression2() {
+        assumeTrue(isRecoveryParser())
+
         assertLocation('a.#', ContentAssistLocation.EXPRESSION)
     }
 
     @Test
     void testExpression3() {
+        assumeTrue(isRecoveryParser())
+
         assertLocation('a.\n#', ContentAssistLocation.EXPRESSION)
     }
 
     @Test
     void testExpression4() {
+        assumeTrue(isRecoveryParser())
+
         assertLocation('a.// \n#', ContentAssistLocation.EXPRESSION)
     }
 
     @Test
     void testExpression5() {
+        assumeTrue(isRecoveryParser())
+
         assertLocation('a.g(b.#)// \n', ContentAssistLocation.EXPRESSION)
     }
 
@@ -532,6 +576,8 @@ final class ContentAssistLocationTests extends CompletionTestSuite {
 
     @Test // https://github.com/groovy/groovy-eclipse/issues/359
     void testExpression9() {
+        assumeTrue(isRecoveryParser())
+
         String contents = '''\
             |def a, b
             |def x = true ? String.val#
@@ -568,6 +614,8 @@ final class ContentAssistLocationTests extends CompletionTestSuite {
 
     @Test // https://github.com/groovy/groovy-eclipse/issues/1129
     void testExpression12() {
+        assumeTrue(isRecoveryParser())
+
         String contents = '''\
             |void meth(String a) {
             |  print a.#
@@ -582,6 +630,8 @@ final class ContentAssistLocationTests extends CompletionTestSuite {
 
     @Test
     void testExpression13() {
+        assumeTrue(isRecoveryParser())
+
         String contents = '''\
             |void meth(String a) {
             |  print a.#
@@ -596,6 +646,8 @@ final class ContentAssistLocationTests extends CompletionTestSuite {
 
     @Test
     void testExpression14() {
+        assumeTrue(isRecoveryParser())
+
         String contents = '''\
             |0.#
             |'''.stripMargin()
@@ -623,6 +675,8 @@ final class ContentAssistLocationTests extends CompletionTestSuite {
 
     @Test
     void testExpression16() {
+        assumeTrue(isRecoveryParser())
+
         addGroovySource 'enum E { ONE, TWO, THREE }'
         String contents = '''\
             |void meth(E e) {
@@ -639,6 +693,8 @@ final class ContentAssistLocationTests extends CompletionTestSuite {
 
     @Test
     void testExpression17() {
+        assumeTrue(isRecoveryParser())
+
         addGroovySource 'enum E { ONE, TWO, THREE }'
         String contents = '''\
             |void meth(E e) {
@@ -656,6 +712,8 @@ final class ContentAssistLocationTests extends CompletionTestSuite {
 
     @Test
     void testExpression18() {
+        assumeTrue(isRecoveryParser())
+
         addGroovySource 'enum E { ONE, TWO, THREE }'
         String contents = '''\
             |void meth(E e) {
@@ -672,6 +730,8 @@ final class ContentAssistLocationTests extends CompletionTestSuite {
 
     @Test
     void testExpression19() {
+        assumeTrue(isRecoveryParser())
+
         addGroovySource 'enum E { ONE, TWO, THREE }'
         String contents = '''\
             |void meth(E e) {
@@ -690,6 +750,8 @@ final class ContentAssistLocationTests extends CompletionTestSuite {
 
     @Test
     void testExpression20() {
+        assumeTrue(isRecoveryParser())
+
         addGroovySource 'enum E { ONE, TWO, THREE }'
         String contents = '''\
             |void meth(E e) {
@@ -707,6 +769,8 @@ final class ContentAssistLocationTests extends CompletionTestSuite {
 
     @Test
     void testExpression21() {
+        assumeTrue(isRecoveryParser())
+
         addGroovySource 'enum E { ONE, TWO, THREE }'
         String contents = '''\
             |void meth(E e) {
@@ -725,6 +789,8 @@ final class ContentAssistLocationTests extends CompletionTestSuite {
 
     @Test
     void testExpression22() {
+        assumeTrue(isRecoveryParser())
+
         addGroovySource 'enum E { ONE, TWO, THREE }'
         String contents = '''\
             |void meth(E e) {
@@ -742,6 +808,8 @@ final class ContentAssistLocationTests extends CompletionTestSuite {
 
     @Test
     void testExpression23() {
+        assumeTrue(isRecoveryParser())
+
         addGroovySource 'enum E { ONE, TWO, THREE }'
         String contents = '''\
             |void meth(E e) {
@@ -761,6 +829,8 @@ final class ContentAssistLocationTests extends CompletionTestSuite {
 
     @Test
     void testExpression24() {
+        assumeTrue(isRecoveryParser())
+
         addGroovySource 'enum E { ONE, TWO, THREE }'
         String contents = '''\
             |void meth(E e) {
@@ -779,6 +849,8 @@ final class ContentAssistLocationTests extends CompletionTestSuite {
 
     @Test
     void testExpression25() {
+        assumeTrue(isRecoveryParser())
+
         addGroovySource 'enum E { ONE, TWO, THREE }'
         String contents = '''\
             |void meth(E e) {
@@ -868,7 +940,7 @@ final class ContentAssistLocationTests extends CompletionTestSuite {
 
     @Test
     void testMethodContext16() {
-        assertLocation('foo #\nh', ContentAssistLocation.METHOD_CONTEXT)
+        assertLocation('foo #\nh', !isParrotParser() ? ContentAssistLocation.METHOD_CONTEXT : ContentAssistLocation.STATEMENT)
     }
 
     @Test
@@ -878,16 +950,18 @@ final class ContentAssistLocationTests extends CompletionTestSuite {
 
     @Test
     void testMethodContext18() {
-        assertLocation('foo a, b #\nh', ContentAssistLocation.METHOD_CONTEXT)
+        assertLocation('foo a, b #\nh', !isParrotParser() ? ContentAssistLocation.METHOD_CONTEXT : ContentAssistLocation.STATEMENT)
     }
 
     @Test
     void testMethodContext19() {
-        assertLocation('foo (a, b #)\nh', ContentAssistLocation.METHOD_CONTEXT)
+        assertLocation('foo (a, b #)\nh', !isParrotParser() ? ContentAssistLocation.METHOD_CONTEXT : ContentAssistLocation.STATEMENT)
     }
 
     @Test
     void testMethodContext20() {
+        assumeTrue(isRecoveryParser())
+
         assertLocation('foo (a,# )\nh', ContentAssistLocation.METHOD_CONTEXT)
     }
 
@@ -921,6 +995,8 @@ final class ContentAssistLocationTests extends CompletionTestSuite {
 
     @Test
     void testMethodContext24() {
+        assumeTrue(isRecoveryParser())
+
         String contents = '''\
             |import static java.util.regex.Pattern.compile
             |def regexp = /[a-z0-9]/
@@ -941,6 +1017,8 @@ final class ContentAssistLocationTests extends CompletionTestSuite {
 
     @Test
     void testPackage0() {
+        assumeTrue(isRecoveryParser())
+
         assertLocation('package #', ContentAssistLocation.PACKAGE)
     }
 
@@ -951,6 +1029,8 @@ final class ContentAssistLocationTests extends CompletionTestSuite {
 
     @Test
     void testImport0() {
+        assumeTrue(isRecoveryParser())
+
         assertLocation('import #', ContentAssistLocation.IMPORT)
     }
 
@@ -961,6 +1041,8 @@ final class ContentAssistLocationTests extends CompletionTestSuite {
 
     @Test
     void testImportStatic0() {
+        assumeTrue(isRecoveryParser())
+
         assertLocation('import static #', ContentAssistLocation.IMPORT)
     }
 
@@ -976,6 +1058,8 @@ final class ContentAssistLocationTests extends CompletionTestSuite {
 
     @Test
     void testClassBody2() {
+        assumeTrue(isRecoveryParser())
+
         assertLocation('class X { t# }', ContentAssistLocation.CLASS_BODY)
     }
 
@@ -1179,6 +1263,8 @@ final class ContentAssistLocationTests extends CompletionTestSuite {
 
     @Test
     void testExceptions8() {
+        assumeTrue(isRecoveryParser())
+
         String contents = '''\
             |class X {
             |  void m() {
@@ -1194,6 +1280,8 @@ final class ContentAssistLocationTests extends CompletionTestSuite {
 
     @Test
     void testExceptions9() {
+        assumeTrue(isRecoveryParser())
+
         String contents = '''\
             |class X {
             |  void m() {
@@ -1254,6 +1342,8 @@ final class ContentAssistLocationTests extends CompletionTestSuite {
 
     @Test
     void testAnnotation1() {
+        assumeTrue(isRecoveryParser())
+
         assertLocation('@# class X { void t(v y = hh) {} }', ContentAssistLocation.ANNOTATION)
     }
 
@@ -1274,11 +1364,15 @@ final class ContentAssistLocationTests extends CompletionTestSuite {
 
     @Test
     void testAnnotation5() {
+        assumeTrue(isRecoveryParser())
+
         assertLocation('@A @# @C class X { void t(v y = hh) {} }', ContentAssistLocation.ANNOTATION)
     }
 
     @Test
     void testAnnotation6() {
+        assumeTrue(isRecoveryParser())
+
         assertLocation('class X { @# void t(v y = hh) {} }', ContentAssistLocation.ANNOTATION)
     }
 
@@ -1289,6 +1383,8 @@ final class ContentAssistLocationTests extends CompletionTestSuite {
 
     @Test
     void testAnnotation8() {
+        assumeTrue(isRecoveryParser())
+
         assertLocation('class X { @# def t }', ContentAssistLocation.ANNOTATION)
     }
 
@@ -1329,11 +1425,15 @@ final class ContentAssistLocationTests extends CompletionTestSuite {
 
     @Test
     void testAnnotationBody5() {
+        assumeTrue(isRecoveryParser())
+
         assertLocation('@A(value=#) class X { }', ContentAssistLocation.ANNOTATION_BODY)
     }
 
     @Test
     void testAnnotationBody6() {
+        assumeTrue(isRecoveryParser())
+
         assertLocation('class X { @A(value=#) def m() { } }', ContentAssistLocation.ANNOTATION_BODY)
     }
 
@@ -1349,36 +1449,50 @@ final class ContentAssistLocationTests extends CompletionTestSuite {
 
     @Test
     void testAnnotationBody9() {
+        assumeTrue(isRecoveryParser())
+
         assertLocation('@A(value=[v,w],#) class X { }', ContentAssistLocation.ANNOTATION_BODY)
     }
 
     @Test
     void testAnnotationBody10() {
+        assumeTrue(isRecoveryParser())
+
         assertLocation('class X { @A(value=[v,w],#) def m() { } }', ContentAssistLocation.ANNOTATION_BODY)
     }
 
     @Test
     void testAnnotationBody11() {
+        assumeTrue(isRecoveryParser())
+
         assertLocation('@A(value=v,w#) class X { }', ContentAssistLocation.ANNOTATION_BODY)
     }
 
     @Test
     void testAnnotationBody12() {
+        assumeTrue(isRecoveryParser())
+
         assertLocation('class X { @A(value=v,w#) def m() { } }', ContentAssistLocation.ANNOTATION_BODY)
     }
 
     @Test
     void testAnnotationBody13() {
+        assumeTrue(isRecoveryParser())
+
         assertLocation('@A(one = null, two = #) class X { }', ContentAssistLocation.ANNOTATION_BODY)
     }
 
     @Test
     void testAnnotationBody14() {
+        assumeTrue(isRecoveryParser())
+
         assertLocation('class X { @A(one = null, two = #) def m() { } }', ContentAssistLocation.ANNOTATION_BODY)
     }
 
     @Test
     void testAnnotationBody15() {
+        assumeTrue(isRecoveryParser())
+
         assertLocation('@A(value = Object.#) class X { }', ContentAssistLocation.EXPRESSION) {
             assert containingCodeBlock instanceof AnnotationNode
         }
@@ -1386,6 +1500,8 @@ final class ContentAssistLocationTests extends CompletionTestSuite {
 
     @Test
     void testAnnotationBody16() {
+        assumeTrue(isRecoveryParser())
+
         assertLocation('class X { @A(value = Object.#) def m() { } }', ContentAssistLocation.EXPRESSION) {
             assert containingCodeBlock instanceof AnnotationNode
         }
@@ -1393,6 +1509,8 @@ final class ContentAssistLocationTests extends CompletionTestSuite {
 
     @Test
     void testAnnotationBody17() {
+        assumeTrue(isRecoveryParser())
+
         assertLocation('@A(value = java.lang.Object.#) class X { }', ContentAssistLocation.EXPRESSION) {
             assert containingCodeBlock instanceof AnnotationNode
         }
@@ -1400,6 +1518,8 @@ final class ContentAssistLocationTests extends CompletionTestSuite {
 
     @Test
     void testAnnotationBody18() {
+        assumeTrue(isRecoveryParser())
+
         assertLocation('class X { @A(value = java.lang.Object.#) def m() { } }', ContentAssistLocation.EXPRESSION) {
             assert containingCodeBlock instanceof AnnotationNode
         }

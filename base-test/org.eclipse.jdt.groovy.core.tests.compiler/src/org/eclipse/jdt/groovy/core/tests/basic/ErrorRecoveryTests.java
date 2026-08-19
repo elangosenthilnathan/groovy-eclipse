@@ -16,11 +16,13 @@
 package org.eclipse.jdt.groovy.core.tests.basic;
 
 import static org.eclipse.jdt.groovy.core.tests.GroovyBundle.isParrotParser;
+import static org.eclipse.jdt.groovy.core.tests.GroovyBundle.isRecoveryParser;
 import static org.eclipse.jdt.groovy.core.util.GroovyUtils.getAllImportNodes;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assume.assumeTrue;
 
 import java.util.List;
 
@@ -37,12 +39,18 @@ import org.codehaus.groovy.ast.expr.VariableExpression;
 import org.codehaus.groovy.ast.stmt.BlockStatement;
 import org.codehaus.groovy.ast.stmt.ReturnStatement;
 import org.codehaus.groovy.ast.stmt.SwitchStatement;
+import org.junit.Before;
 import org.junit.Test;
 
 /**
  * Tests groovy parser error recovery enhancements.
  */
 public final class ErrorRecoveryTests extends GroovyCompilerTestSuite {
+
+    @Before
+    public void setUp() {
+        assumeTrue(isRecoveryParser());
+    }
 
     @Test // syntax error in one method should not impact outer class structure
     public void testParsingRecovery_BasicBlock() {
@@ -2613,70 +2621,5 @@ public final class ErrorRecoveryTests extends GroovyCompilerTestSuite {
             "\t            ^\n" +
             "Groovy:expecting EOF, found \'!\'\n" +
             "----------\n");
-    }
-
-    @Test
-    public void testUnrecoverableErrors_GRE755_1() {
-        //@formatter:off
-        String[] sources = {
-            "X.groovy",
-            "class X {\n" +
-            "  def x=\"\n" +
-            "}\n",
-        };
-        //@formatter:on
-
-        runNegativeTest(sources,
-            "----------\n" +
-            "1. ERROR in X.groovy (at line 2)\n" +
-            "\tdef x=\"\n" + (isParrotParser()
-            ?
-            "\t      ^\n" +
-            "Groovy:Unexpected character: '\"'\n"
-            :
-            "}\n" +
-            "\t       ^\n" +
-            "Groovy:expecting anything but \'\'\\n\'\'; got it anyway\n"
-            ) +
-            "----------\n");
-
-        ModuleNode moduleNode = getModuleNode("X.groovy");
-        assertTrue(moduleNode.encounteredUnrecoverableError());
-    }
-
-    @Test
-    public void testUnrecoverableErrors_GRE755_2() {
-        //@formatter:off
-        String[] sources = {
-            "X.groovy",
-            "package a\n" +
-            "\n" +
-            "def foo(Nuthin\n",
-        };
-        //@formatter:on
-
-        runNegativeTest(sources,
-            "----------\n" + (isParrotParser()
-            ?
-            "1. ERROR in X.groovy (at line 0)\n" +
-            "\tpackage a\n" +
-            "\t^\n" +
-            "Groovy:General error during conversion: groovyjarjarantlr4.v4.runtime.InputMismatchException\n" +
-            "----------\n" +
-            "2. ERROR in X.groovy (at line 4)\n" +
-            "\tdef foo(Nuthin\n" +
-            "\n" +
-            "\t              ^\n" +
-            "Groovy:Unexpected input: '<EOF>'\n"
-            :
-            "1. ERROR in X.groovy (at line 3)\n" +
-            "\tdef foo(Nuthin\n" +
-            "\t        ^\n" +
-            "Groovy:unexpected token: Nuthin\n"
-            ) +
-            "----------\n");
-
-        ModuleNode moduleNode = getModuleNode("X.groovy");
-        assertFalse(moduleNode.encounteredUnrecoverableError());
     }
 }

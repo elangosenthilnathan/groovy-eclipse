@@ -1,5 +1,5 @@
 /*
- * Copyright 2009-2019 the original author or authors.
+ * Copyright 2009-2026 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 package org.eclipse.jdt.core.groovy.tests.locations;
+
+import static groovy.test.GroovyAssert.notYetImplemented;
 
 import static org.eclipse.jdt.groovy.core.tests.GroovyBundle.isParrotParser;
 
@@ -39,7 +41,6 @@ import org.codehaus.groovy.ast.expr.VariableExpression;
 import org.codehaus.groovy.ast.stmt.AssertStatement;
 import org.codehaus.groovy.ast.stmt.Statement;
 import org.codehaus.groovy.control.CompilerConfiguration;
-import org.codehaus.groovy.control.ErrorCollector;
 import org.codehaus.groovy.control.SourceUnit;
 import org.codehaus.groovy.eclipse.core.util.VisitCompleteException;
 import org.eclipse.jdt.groovy.core.util.DepthFirstVisitor;
@@ -111,18 +112,18 @@ public final class ASTNodeSourceLocationsTests {
             {"def x = ( a ) == b\n", "( a ) == b", BinaryExpression.class},
             {"def x = c == ( d )\n", "c == ( d )", BinaryExpression.class},
             {"def x = a[b]\n", "a[b]", BinaryExpression.class},
-            /*{"def x = (a)[b]\n", "(a)[b]", BinaryExpression.class}, parsed as cast of list*/
+            {"def x = (a)[b]\n", "(a)[b]", BinaryExpression.class}, // GROOVY-10355
             {"def x = a[(b)]\n", "a[(b)]", BinaryExpression.class},
             {"def x = (a[b])\n", "(a[b])", BinaryExpression.class},
             {"Map m\n m['k']\n", "m['k']", BinaryExpression.class},
-            {"def x = ( a ) in b\n", "( a ) in b", BinaryExpression.class},
+            {"def x = ( a ) in b\n", "( a ) in b", BinaryExpression.class}, // GROOVY-10355
             {"def x = a in ( b )\n", "a in ( b )", BinaryExpression.class},
             {"def x = ( a in b )\n", "( a in b )", BinaryExpression.class},
-            {"def x = ( ( a ) in b )\n", "( ( a ) in b )", BinaryExpression.class},
+            {"def x = ( ( a ) in b )\n", "( ( a ) in b )", BinaryExpression.class}, // GROOVY-10355
             {"def x = ( a in ( b ) )\n", "( a in ( b ) )", BinaryExpression.class},
-            {"def x = ( a ) instanceof b\n", "( a ) instanceof b", BinaryExpression.class},
-            {"def x = ( a instanceof b )\n", "( a instanceof b )", BinaryExpression.class},
-            {"def x = ( ( a ) instanceof b )\n", "( ( a ) instanceof b )", BinaryExpression.class},
+            {"def x = ( a ) instanceof B\n", "( a ) instanceof B", BinaryExpression.class},
+            {"def x = ( a instanceof B )\n", "( a instanceof B )", BinaryExpression.class},
+            {"def x = ( ( a ) instanceof B )\n", "( ( a ) instanceof B )", BinaryExpression.class},
 
             {"def x = a ? b : c\n", "a ? b : c", TernaryExpression.class},
             {"def x = (a) ? b : c\n", "(a) ? b : c", TernaryExpression.class},
@@ -194,16 +195,19 @@ public final class ASTNodeSourceLocationsTests {
 
     @Test
     public void testSourceLocations() throws Exception {
-        CompilerConfiguration config = new CompilerConfiguration();
-        SourceUnit sourceUnit = new SourceUnit("TestUnit", source, config, new GroovyClassLoader(), new ErrorCollector(config));
-        sourceUnit.parse();
-        sourceUnit.completePhase();
-        sourceUnit.convert();
+        if ((source.contains("(a)[b]") || (source.contains("( a ) in ") && isParrotParser())) &&
+            notYetImplemented(this)) return;
 
-        final int offset = source.indexOf(target), length = target.length();
+        int offset = source.indexOf(target);
         Assume.assumeTrue(offset >= 0);
+        int length = target.length();
 
-        try {
+        try (GroovyClassLoader cl = new GroovyClassLoader()) {
+            SourceUnit sourceUnit = new SourceUnit("TestUnit", source, new CompilerConfiguration(), cl, null);
+            sourceUnit.parse();
+            sourceUnit.completePhase();
+            sourceUnit.convert();
+
             new DepthFirstVisitor() {
                 @Override
                 protected void visitExpression(Expression expression) {

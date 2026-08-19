@@ -1,5 +1,5 @@
 /*
- * Copyright 2009-2020 the original author or authors.
+ * Copyright 2009-2026 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,6 +14,9 @@
  * limitations under the License.
  */
 package org.codehaus.groovy.eclipse.codeassist.tests
+
+import static org.eclipse.jdt.groovy.core.tests.GroovyBundle.isRecoveryParser
+import static org.junit.Assume.assumeTrue
 
 import org.codehaus.groovy.eclipse.codeassist.GroovyContentAssist
 import org.eclipse.jdt.ui.PreferenceConstants
@@ -182,6 +185,8 @@ final class GuessingCompletionTests extends CompletionTestSuite {
 
     @Test
     void testCtorParamGuessing() {
+        assumeTrue(isRecoveryParser())
+
         addGroovySource '''\
             |class C {
             |  C(java.lang.String string, java.util.concurrent.TimeUnit units) {

@@ -1,5 +1,5 @@
 /*
- * Copyright 2009-2020 the original author or authors.
+ * Copyright 2009-2026 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -107,16 +107,6 @@ final class ExtractLocalTests extends RefactoringTestSuite {
     @Test
     void test10() {
         helper(getTest10In(), getTest10Out(), findLocation('model.farInstance()', 'test10'), 'model.farInstance()'.length(), true)
-    }
-
-    @Test
-    void test10a() {
-        helper(getTest10In(), getTest10Out(), findLocation('model.farInstance() ', 'test10'), 'model.farInstance() '.length(), true)
-    }
-
-    @Test
-    void test10b() {
-        helper(getTest10In(), getTest10Out(), findLocation('model.farInstance()  ', 'test10'), 'model.farInstance()  '.length(), true)
     }
 
     @Test

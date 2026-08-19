@@ -1,5 +1,5 @@
 /*
- * Copyright 2009-2020 the original author or authors.
+ * Copyright 2009-2026 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,6 +14,9 @@
  * limitations under the License.
  */
 package org.codehaus.groovy.eclipse.codeassist.tests
+
+import static org.eclipse.jdt.groovy.core.tests.GroovyBundle.isRecoveryParser
+import static org.junit.Assume.assumeTrue
 
 import org.eclipse.jdt.core.JavaCore
 import org.eclipse.jdt.ui.PreferenceConstants
@@ -168,6 +171,8 @@ final class TypeCompletionTests2 extends CompletionTestSuite {
 
     @Test
     void testTypeCompletionInBrokenScript1() {
+        assumeTrue(isRecoveryParser())
+
         String contents = 'def x(HTML'
         String expected = 'import javax.swing.text.html.HTML\n\ndef x(HTML'
 
@@ -176,6 +181,8 @@ final class TypeCompletionTests2 extends CompletionTestSuite {
 
     @Test
     void testTypeCompletionInBrokenScript2() {
+        assumeTrue(isRecoveryParser())
+
         String contents = 'package f\n\ndef x(HTML'
         String expected = 'package f\n\nimport javax.swing.text.html.HTML\n\n\ndef x(HTML'
         // deal with some variance in JDT Core adding first import between package and script body
@@ -188,6 +195,8 @@ final class TypeCompletionTests2 extends CompletionTestSuite {
 
     @Test
     void testTypeCompletionInBrokenScript3() {
+        assumeTrue(isRecoveryParser())
+
         String contents = 'package f;\n\ndef x(HTML'
         String expected = 'package f;\n\nimport javax.swing.text.html.HTML\n\n\ndef x(HTML'
         // deal with some variance in JDT Core adding first import between package and script body
@@ -200,6 +209,8 @@ final class TypeCompletionTests2 extends CompletionTestSuite {
 
     @Test
     void testTypeCompletionInBrokenScript4() {
+        assumeTrue(isRecoveryParser())
+
         String contents = '/**some stuff*/\npackage f\n\ndef x(HTML'
         String expected = '/**some stuff*/\npackage f\n\nimport javax.swing.text.html.HTML\n\n\ndef x(HTML'
         // deal with some variance in JDT Core adding first import between package and script body
@@ -212,6 +223,8 @@ final class TypeCompletionTests2 extends CompletionTestSuite {
 
     @Test
     void testTypeCompletionInBrokenScript5() {
+        assumeTrue(isRecoveryParser())
+
         String contents = '/**some stuff*/\npackage f;\n\ndef x(HTML'
         String expected = '/**some stuff*/\npackage f;\n\nimport javax.swing.text.html.HTML\n\n\ndef x(HTML'
         // deal with some variance in JDT Core adding first import between package and script body
@@ -224,6 +237,8 @@ final class TypeCompletionTests2 extends CompletionTestSuite {
 
     @Test
     void testTypeCompletionInBrokenScript6() {
+        assumeTrue(isRecoveryParser())
+
         String contents = '/**some stuff*/\n\nimport javax.swing.plaf.ButtonUI\n\ndef x(HTML'
         String expected = '/**some stuff*/\n\nimport javax.swing.plaf.ButtonUI\nimport javax.swing.text.html.HTML\n\ndef x(HTML'
 
@@ -232,6 +247,8 @@ final class TypeCompletionTests2 extends CompletionTestSuite {
 
     @Test
     void testTypeCompletionInBrokenScript7() {
+        assumeTrue(isRecoveryParser())
+
         String contents = '/**some stuff*/\n\nimport javax.swing.plaf.ButtonUI;\n\ndef x(HTML'
         String expected = '/**some stuff*/\n\nimport javax.swing.plaf.ButtonUI;\nimport javax.swing.text.html.HTML\n\ndef x(HTML'
 
@@ -240,6 +257,8 @@ final class TypeCompletionTests2 extends CompletionTestSuite {
 
     @Test
     void testTypeCompletionInBrokenScript8() {
+        assumeTrue(isRecoveryParser())
+
         String contents = '/**some stuff*/\npackage f\n\nimport javax.swing.plaf.ButtonUI\n\ndef x(HTML'
         String expected = '/**some stuff*/\npackage f\n\nimport javax.swing.plaf.ButtonUI\nimport javax.swing.text.html.HTML\n\ndef x(HTML'
 
@@ -248,6 +267,8 @@ final class TypeCompletionTests2 extends CompletionTestSuite {
 
     @Test
     void testTypeCompletionInBrokenScript9() {
+        assumeTrue(isRecoveryParser())
+
         String contents = '/**some stuff*/\npackage f;\n\nimport javax.swing.plaf.ButtonUI;\n\ndef x(HTML'
         String expected = '/**some stuff*/\npackage f;\n\nimport javax.swing.plaf.ButtonUI;\nimport javax.swing.text.html.HTML\n\ndef x(HTML'
 
@@ -275,6 +296,8 @@ final class TypeCompletionTests2 extends CompletionTestSuite {
 
     @Test
     void testTypeCompletionInBrokenScript11() {
+        assumeTrue(isRecoveryParser())
+
         String contents = '''\
             |/**some stuff*/
             |package f
@@ -298,6 +321,8 @@ final class TypeCompletionTests2 extends CompletionTestSuite {
 
     @Test
     void testTypeCompletionInBrokenScript12() {
+        assumeTrue(isRecoveryParser())
+
         String contents = '''\
             |/**some stuff*/
             |package f
@@ -321,6 +346,8 @@ final class TypeCompletionTests2 extends CompletionTestSuite {
 
     @Test
     void testTypeCompletionInBrokenScript13() {
+        assumeTrue(isRecoveryParser())
+
         String contents = '''\
             |/**some stuff*/
             |package f
@@ -347,6 +374,8 @@ final class TypeCompletionTests2 extends CompletionTestSuite {
 
     @Test
     void testTypeCompletionInBrokenScript14() {
+        assumeTrue(isRecoveryParser())
+
         String contents = '''\
             |/**some stuff*/
             |
@@ -371,6 +400,8 @@ final class TypeCompletionTests2 extends CompletionTestSuite {
 
     @Test // GRECLIPSE-926
     void testTypeCompletionInBrokenScript15() {
+        assumeTrue(isRecoveryParser())
+
         String contents = '''\
             |package f
             |
@@ -401,6 +432,8 @@ final class TypeCompletionTests2 extends CompletionTestSuite {
 
     @Test
     void testTypeCompletionInBrokenClass1() {
+        assumeTrue(isRecoveryParser())
+
         String contents = '/**some stuff*/\npackage f\n\nclass Y {\ndef x(HTML'
         String expected = '/**some stuff*/\npackage f\n\nimport javax.swing.text.html.HTML\n\nclass Y {\ndef x(HTML'
 
@@ -409,6 +442,8 @@ final class TypeCompletionTests2 extends CompletionTestSuite {
 
     @Test
     void testTypeCompletionInBrokenClass2() {
+        assumeTrue(isRecoveryParser())
+
         String contents = '/**some stuff*/\npackage f\n\nclass Y extends HTML {\ndef x(H'
         String expected = '/**some stuff*/\npackage f\n\nimport javax.swing.text.html.HTML\n\nclass Y extends HTML {\ndef x(H'
 

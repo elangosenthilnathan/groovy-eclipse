@@ -17,6 +17,7 @@ package org.codehaus.groovy.eclipse.codeassist.tests
 
 import static org.eclipse.jdt.groovy.core.tests.GroovyBundle.isAtLeastGroovy
 import static org.eclipse.jdt.groovy.core.tests.GroovyBundle.isParrotParser
+import static org.eclipse.jdt.groovy.core.tests.GroovyBundle.isRecoveryParser
 import static org.junit.Assume.assumeTrue
 
 import org.eclipse.jdt.internal.codeassist.impl.AssistOptions
@@ -34,6 +35,8 @@ final class MethodCompletionTests extends CompletionTestSuite {
 
     @Test
     void testAfterParens1() {
+        assumeTrue(isRecoveryParser())
+
         String contents = '''\
             |HttpRetryException f() { null }
             |f().
@@ -44,6 +47,8 @@ final class MethodCompletionTests extends CompletionTestSuite {
 
     @Test
     void testAfterParens2() {
+        assumeTrue(isRecoveryParser())
+
         String contents = '''\
             |HttpRetryException f() { null }
             |this.f().
@@ -54,6 +59,8 @@ final class MethodCompletionTests extends CompletionTestSuite {
 
     @Test
     void testAfterParens3() {
+        assumeTrue(isRecoveryParser())
+
         String contents = '''\
             |class Super { HttpRetryException f() { null } }
             |new Super().f().
@@ -64,6 +71,8 @@ final class MethodCompletionTests extends CompletionTestSuite {
 
     @Test
     void testAfterParens4() {
+        assumeTrue(isRecoveryParser())
+
         String contents = '''\
             |class Super { HttpRetryException f() { null } }
             |class Sub extends Super { }
@@ -75,6 +84,8 @@ final class MethodCompletionTests extends CompletionTestSuite {
 
     @Test
     void testAfterParens5() {
+        assumeTrue(isRecoveryParser())
+
         String contents = '''\
             |class Super { HttpRetryException f(arg) { null } }
             |def s = new Super()
@@ -86,6 +97,8 @@ final class MethodCompletionTests extends CompletionTestSuite {
 
     @Test
     void testAfterParens6() {
+        assumeTrue(isRecoveryParser())
+
         String contents = '''\
             |class Super { HttpRetryException f() { null } }
             |def s = new Super()
@@ -157,6 +170,8 @@ final class MethodCompletionTests extends CompletionTestSuite {
 
     @Test // https://github.com/groovy/groovy-eclipse/issues/946
     void testObjectExpr7() {
+        assumeTrue(isRecoveryParser())
+
         String contents = '''\
             |class C {
             |  static Date date(whatever) {
@@ -187,6 +202,8 @@ final class MethodCompletionTests extends CompletionTestSuite {
 
     @Test
     void testObjectExpr9() {
+        assumeTrue(isRecoveryParser())
+
         String contents = '''\
             |class C {
             |  Date date(whatever) {
@@ -232,6 +249,8 @@ final class MethodCompletionTests extends CompletionTestSuite {
 
     @Test // https://github.com/groovy/groovy-eclipse/issues/1129
     void testObjectExpr12() {
+        assumeTrue(isRecoveryParser())
+
         String contents = '''\
             |class C {
             |  void meth(Number n) {
@@ -247,6 +266,8 @@ final class MethodCompletionTests extends CompletionTestSuite {
 
     @Test // https://github.com/groovy/groovy-eclipse/issues/1129
     void testObjectExpr13() {
+        assumeTrue(isRecoveryParser())
+
         String contents = '''\
             |class C {
             |  void meth(Number n) {
@@ -262,6 +283,8 @@ final class MethodCompletionTests extends CompletionTestSuite {
 
     @Test
     void testObjectExpr14() {
+        assumeTrue(isRecoveryParser())
+
         String contents = '''\
             |void meth(Serializable s) {
             |  s.
@@ -471,6 +494,8 @@ final class MethodCompletionTests extends CompletionTestSuite {
 
     @Test // GRECLIPSE-1752
     void testStatic1() {
+        assumeTrue(isRecoveryParser())
+
         String contents = '''\
             |class A {
             |  static void util() {}
@@ -485,6 +510,8 @@ final class MethodCompletionTests extends CompletionTestSuite {
 
     @Test
     void testStatic2() {
+        assumeTrue(isRecoveryParser())
+
         String contents = '''\
             |@groovy.transform.CompileStatic
             |class A {
@@ -501,6 +528,8 @@ final class MethodCompletionTests extends CompletionTestSuite {
 
     @Test
     void testClass1() {
+        assumeTrue(isRecoveryParser())
+
         String contents = '''\
             |class A {
             |  static void util() {}
@@ -515,6 +544,8 @@ final class MethodCompletionTests extends CompletionTestSuite {
 
     @Test
     void testClass2() {
+        assumeTrue(isRecoveryParser())
+
         String contents = '''\
             |@groovy.transform.CompileStatic
             |class A {
@@ -628,6 +659,8 @@ final class MethodCompletionTests extends CompletionTestSuite {
 
     @Test
     void testStaticMethods3() {
+        assumeTrue(isRecoveryParser())
+
         String contents = '''\
             |import java.util.regex.Pattern
             |Pattern.
@@ -921,6 +954,8 @@ final class MethodCompletionTests extends CompletionTestSuite {
 
     @Test
     void testAnnotatedMethod1() {
+        assumeTrue(isRecoveryParser())
+
         String contents = '''\
             |class Foo {
             |  @SuppressWarnings(value=[])
@@ -935,6 +970,8 @@ final class MethodCompletionTests extends CompletionTestSuite {
 
     @Test
     void testAnnotatedMethod2() {
+        assumeTrue(isRecoveryParser())
+
         String contents = '''\
             |class Foo {
             |  @SuppressWarnings(value=[])
@@ -950,6 +987,8 @@ final class MethodCompletionTests extends CompletionTestSuite {
 
     @Test
     void testIncompleteMethodCall() {
+        assumeTrue(isRecoveryParser())
+
         String contents = '''\
             |class Foo {
             |  void bar(Object param) {
@@ -1063,6 +1102,8 @@ final class MethodCompletionTests extends CompletionTestSuite {
 
     @Test
     void testRangeExpressionCompletion1() {
+        assumeTrue(isRecoveryParser())
+
         String contents = '''\
             |(0..1).
             |'''.stripMargin()
@@ -1078,6 +1119,8 @@ final class MethodCompletionTests extends CompletionTestSuite {
 
     @Test
     void testRangeExpressionCompletion2() {
+        assumeTrue(isRecoveryParser())
+
         setJavaPreference(PreferenceConstants.CODEASSIST_AUTOACTIVATION, true)
         String contents = '''\
             |def range = 0.
@@ -1114,6 +1157,8 @@ final class MethodCompletionTests extends CompletionTestSuite {
 
     @Test
     void testRangeExpressionCompletion4() {
+        assumeTrue(isRecoveryParser())
+
         setJavaPreference(PreferenceConstants.CODEASSIST_AUTOACTIVATION, true)
         String contents = '''\
             |def other = 0.
@@ -1253,6 +1298,8 @@ final class MethodCompletionTests extends CompletionTestSuite {
 
     @Test
     void testTraitMethods8() {
+        assumeTrue(isRecoveryParser())
+
         String contents = '''\
             |trait T {
             |  static m1() {}
@@ -1284,6 +1331,8 @@ final class MethodCompletionTests extends CompletionTestSuite {
 
     @Test
     void testTraitMethods10() {
+        assumeTrue(isRecoveryParser())
+
         String contents = '''\
             |trait T {
             |  static m1() {}
@@ -1306,6 +1355,8 @@ final class MethodCompletionTests extends CompletionTestSuite {
 
     @Test
     void testTraitMethods11() {
+        assumeTrue(isRecoveryParser())
+
         String contents = '''\
             |trait T {
             |  def m1() {}

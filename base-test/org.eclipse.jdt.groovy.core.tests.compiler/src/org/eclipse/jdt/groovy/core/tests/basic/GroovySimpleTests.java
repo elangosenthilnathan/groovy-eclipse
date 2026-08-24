@@ -3846,8 +3846,7 @@ public final class GroovySimpleTests extends GroovyCompilerTestSuite {
             Groovy:General error during conversion: groovyjarjarantlr4.v4.runtime.InputMismatchException
             ----------
             2. ERROR in X.groovy (at line %d)
-            \tdef foo(Nuthin
-
+            \tdef foo(Nuthin\n
             \t              ^
             Groovy:%s
             ----------

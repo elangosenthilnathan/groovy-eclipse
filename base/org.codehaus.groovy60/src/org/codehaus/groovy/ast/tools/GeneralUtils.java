@@ -56,6 +56,7 @@ import org.codehaus.groovy.ast.expr.NotExpression;
 import org.codehaus.groovy.ast.expr.PropertyExpression;
 import org.codehaus.groovy.ast.expr.SpreadExpression;
 import org.codehaus.groovy.ast.expr.StaticMethodCallExpression;
+import org.codehaus.groovy.ast.expr.SwitchExpression;
 import org.codehaus.groovy.ast.expr.TernaryExpression;
 import org.codehaus.groovy.ast.expr.VariableExpression;
 import org.codehaus.groovy.ast.stmt.BlockStatement;
@@ -76,6 +77,7 @@ import org.codehaus.groovy.ast.stmt.SynchronizedStatement;
 import org.codehaus.groovy.ast.stmt.ThrowStatement;
 import org.codehaus.groovy.ast.stmt.TryCatchStatement;
 import org.codehaus.groovy.ast.stmt.WhileStatement;
+import org.codehaus.groovy.ast.stmt.YieldStatement;
 import org.codehaus.groovy.classgen.BytecodeExpression;
 import org.codehaus.groovy.control.io.ReaderSource;
 import org.codehaus.groovy.runtime.GeneratedClosure;
@@ -1637,6 +1639,16 @@ public class GeneralUtils {
         return new ReturnStatement(expr);
     }
     /**
+     * Creates a yield statement for a switch expression (GROOVY-12255).
+     *
+     * @param expr the yielded expression
+     * @return the resulting YieldStatement
+     * @since 6.0.0
+     */
+    public static YieldStatement yieldS(final Expression expr) {
+        return new YieldStatement(expr);
+    }
+    /**
      * Creates a null-guarded statement sequence.
      *
      * @param fieldExpr the field expression used in the guard
@@ -1703,6 +1715,18 @@ public class GeneralUtils {
      */
     public static SwitchStatement switchS(final Expression expr, final List<CaseStatement> caseStatements, final Statement defaultStatement) {
         return new SwitchStatement(expr, caseStatements, defaultStatement);
+    }
+    /**
+     * Creates a first-class switch expression (GROOVY-12255 / JEP 361).
+     *
+     * @param expr the selector expression
+     * @param caseStatements the case arms
+     * @param defaultStatement the default arm
+     * @return the resulting SwitchExpression
+     * @since 6.0.0
+     */
+    public static SwitchExpression switchX(final Expression expr, final List<CaseStatement> caseStatements, final Statement defaultStatement) {
+        return new SwitchExpression(expr, caseStatements, defaultStatement);
     }
     /**
      * Creates a ternary expression.
@@ -2095,6 +2119,18 @@ public class GeneralUtils {
         return sb.toString();
     }
     /**
+     * True when some path through {@code statement} can complete normally,
+     * including a labeled {@code break} that skips a later abrupt statement.
+     * Prefer this over {@link #maybeFallsThrough(Statement)} when rejecting
+     * incomplete switch-expression arms.
+     */
+    @Internal
+    public static boolean mayCompleteNormally(final Statement statement) {
+        if (statement == null || statement.isEmpty()) return true;
+        return analyzeStatementFlow(statement).mayContinue;
+    }
+
+    /**
      * Determines whether execution may continue past the supplied statement.
      *
      * @param statement the statement to analyze
@@ -2103,7 +2139,7 @@ public class GeneralUtils {
     public static boolean maybeFallsThrough(final Statement statement) {
         if (statement.isEmpty()) return true;
 
-        if (statement instanceof ReturnStatement) {
+        if (statement instanceof ReturnStatement || statement instanceof YieldStatement) {
             return false;
         } else if (statement instanceof ThrowStatement) {
             return false;
@@ -2215,7 +2251,8 @@ public class GeneralUtils {
             return StatementFlow.breakFlow(breakStatement.getLabel());
         } else if (statement instanceof ContinueStatement continueStatement) {
             return StatementFlow.continueFlow(continueStatement.getLabel());
-        } else if (statement instanceof ReturnStatement || statement instanceof ThrowStatement) {
+        } else if (statement instanceof ReturnStatement || statement instanceof ThrowStatement
+                || statement instanceof YieldStatement) {
             return StatementFlow.ABRUPT;
         } else if (statement instanceof BlockStatement block) {
             StatementFlow flow = StatementFlow.FALL_THROUGH;

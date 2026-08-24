@@ -442,18 +442,31 @@ public final class StaticCompilationTests extends GroovyCompilerTestSuite {
         };
         //@formatter:on
 
-        runNegativeTest(sources,
-            "----------\n" +
-            "1. ERROR in Main.groovy (at line 4)\n" +
-            "\tprint One.foo + Two.bar\n" +
-            "\t      ^^^\n" +
-            "Groovy:Access to One#foo is forbidden\n" +
-            "----------\n" +
-            "2. ERROR in Main.groovy (at line 4)\n" +
-            "\tprint One.foo + Two.bar\n" +
-            "\t                ^^^\n" +
-            "Groovy:Access to Two#bar is forbidden\n" +
-            "----------\n");
+        runNegativeTest(sources, isAtLeastGroovy(60) ? """
+            ----------
+            1. ERROR in Main.groovy (at line 4)
+            \tprint One.foo + Two.bar
+            \t      ^^^^^^^
+            Groovy:[Static type checking] - No such property: foo for Class or static property for class: One
+            ----------
+            2. ERROR in Main.groovy (at line 4)
+            \tprint One.foo + Two.bar
+            \t                ^^^^^^^
+            Groovy:[Static type checking] - No such property: bar for Class or static property for class: Two
+            ----------
+            """ : """
+            ----------
+            1. ERROR in Main.groovy (at line 4)
+            \tprint One.foo + Two.bar
+            \t      ^^^
+            Groovy:Access to One#foo is forbidden
+            ----------
+            2. ERROR in Main.groovy (at line 4)
+            \tprint One.foo + Two.bar
+            \t                ^^^
+            Groovy:Access to Two#bar is forbidden
+            ----------
+            """);
     }
 
     @Test
@@ -4261,13 +4274,21 @@ public final class StaticCompilationTests extends GroovyCompilerTestSuite {
         };
         //@formatter:on
 
-        runNegativeTest(sources,
-            "----------\n" +
-            "1. ERROR in Main.groovy (at line 7)\n" +
-            "\tprint Main.VALUE\n" +
-            "\t      ^^^^\n" +
-            "Groovy:Access to Main#VALUE is forbidden\n" +
-            "----------\n");
+        runNegativeTest(sources, isAtLeastGroovy(60) ? """
+            ----------
+            1. ERROR in Main.groovy (at line 7)
+            \tprint Main.VALUE
+            \t      ^^^^^^^^^^
+            Groovy:[Static type checking] - No such property: VALUE for Class or static property for class: Main
+            ----------
+            """ : """
+            ----------
+            1. ERROR in Main.groovy (at line 7)
+            \tprint Main.VALUE
+            \t      ^^^^
+            Groovy:Access to Main#VALUE is forbidden
+            ----------
+            """);
     }
 
     @Test

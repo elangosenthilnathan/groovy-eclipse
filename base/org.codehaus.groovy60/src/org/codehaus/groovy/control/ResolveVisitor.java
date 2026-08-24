@@ -19,6 +19,7 @@
 package org.codehaus.groovy.control;
 
 import groovy.lang.Tuple2;
+import groovy.transform.Internal;
 import org.codehaus.groovy.GroovyBugError;
 import org.codehaus.groovy.ast.ASTNode;
 import org.codehaus.groovy.ast.AnnotationNode;
@@ -55,6 +56,7 @@ import org.codehaus.groovy.ast.expr.MapExpression;
 import org.codehaus.groovy.ast.expr.MethodCallExpression;
 import org.codehaus.groovy.ast.expr.PropertyExpression;
 import org.codehaus.groovy.ast.expr.SpreadMapExpression;
+import org.codehaus.groovy.ast.expr.SwitchExpression;
 import org.codehaus.groovy.ast.expr.VariableExpression;
 import org.codehaus.groovy.ast.stmt.BlockStatement;
 import org.codehaus.groovy.ast.stmt.CatchStatement;
@@ -107,6 +109,15 @@ public class ResolveVisitor extends ClassCodeExpressionTransformer {
      * Placeholder name used for wildcard generic arguments.
      */
     public static final String QUESTION_MARK = "?";
+    /**
+     * Node-metadata key under which a parser may store an explanatory suffix for a
+     * {@link CastExpression} whose type it suspects may fail to resolve — for example a
+     * cast produced by a grammar ambiguity. When the cast's type cannot be resolved, the
+     * stored text is appended to the {@code unable to resolve class} error message.
+     * The value is the complete hint text; this visitor attaches no meaning to it.
+     */
+    @Internal
+    public static final String CAST_RESOLVE_HINT = "_CAST_RESOLVE_HINT";
 
     // GRECLIPSE private->public
     public final CompilationUnit compilationUnit;
@@ -1089,12 +1100,16 @@ public class ResolveVisitor extends ClassCodeExpressionTransformer {
             ret = transformMethodCallExpression((MethodCallExpression) exp);
         } else if (exp instanceof ClosureExpression) {
             ret = transformClosureExpression((ClosureExpression) exp);
+        } else if (exp instanceof SwitchExpression se) {
+            visitSwitchExpression(se);
+            ret = se;
         } else if (exp instanceof ConstructorCallExpression) {
             ret = transformConstructorCallExpression((ConstructorCallExpression) exp);
         } else if (exp instanceof AnnotationConstantExpression) {
             ret = transformAnnotationConstantExpression((AnnotationConstantExpression) exp);
         } else {
-            resolveOrFail(exp.getType(), exp);
+            String hint = exp instanceof CastExpression ? exp.getNodeMetaData(CAST_RESOLVE_HINT) : null;
+            resolveOrFail(exp.getType(), hint != null ? hint : "", exp);
             ret = exp.transformExpression(this);
         }
         if (ret != null && ret != exp) {

@@ -192,8 +192,7 @@ public final class InferencingTests extends InferencingTestSuite {
         assertType(contents, "x", "java.lang.String");
 
         contents = "def x = predicate() ? 'literal' : 42";
-        assertType(contents, "x", "java.io.Serializable & java.lang.Comparable" +
-            (Runtime.version().feature() > 11 ? " & java.lang.constant.Constable & java.lang.constant.ConstantDesc" : ""));
+        assertType(contents, "x", "java.io.Serializable & java.lang.Comparable & java.lang.constant.Constable & java.lang.constant.ConstantDesc");
     }
 
     @Test
@@ -331,7 +330,7 @@ public final class InferencingTests extends InferencingTestSuite {
         assertType(contents, offset, offset + 1, "java.lang.StringBuffer");
 
         offset = contents.indexOf("x", offset + 1);
-        assertType(contents, offset, offset + 1, "java.io.Serializable & java.lang.CharSequence" + (Runtime.version().feature() < 11 ? "" :  " & java.lang.Comparable"));
+        assertType(contents, offset, offset + 1, "java.io.Serializable & java.lang.CharSequence & java.lang.Comparable");
     }
 
     @Test
@@ -353,7 +352,7 @@ public final class InferencingTests extends InferencingTestSuite {
         assertType(contents, offset, offset + 1, "java.lang.StringBuffer");
 
         offset = contents.indexOf("x", offset + 1);
-        assertType(contents, offset, offset + 1, "java.io.Serializable & java.lang.CharSequence" + (Runtime.version().feature() < 11 ? "" :  " & java.lang.Comparable"));
+        assertType(contents, offset, offset + 1, "java.io.Serializable & java.lang.CharSequence & java.lang.Comparable");
     }
 
     @Test
@@ -5340,7 +5339,24 @@ public final class InferencingTests extends InferencingTestSuite {
         assertType(contents, offset, offset + 3, "java.lang.Object");
     }
 
-    @Test // https://issues.apache.org/jira/browse/GROOVY-9854
+    @Test // GROOVY-9272, GROOVY-12255
+    public void testSwitchClassCase13() {
+        assumeTrue(isParrotParser() && isAtLeastGroovy(40));
+
+        String contents =
+            "void test(o) {\n" +
+            "  def x = switch(o){\n" +
+            "   case Number -> 11\n" +
+            "   case String -> ''\n" +
+            "  }\n" +
+            "}\n";
+
+        int offset = contents.indexOf("x");
+        assertType(contents, offset, offset + 1, "java.io.Serializable" +
+            (isAtLeastGroovy(60) ? " & java.lang.Comparable & java.lang.constant.Constable & java.lang.constant.ConstantDesc" : ""));
+    }
+
+    @Test // GROOVY-9854
     public void testSwitchClosureCase1() {
         String contents =
             "switch (123) {\n" +

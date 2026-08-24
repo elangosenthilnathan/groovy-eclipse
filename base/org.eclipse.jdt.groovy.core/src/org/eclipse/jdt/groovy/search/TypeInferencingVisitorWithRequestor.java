@@ -83,6 +83,7 @@ import org.codehaus.groovy.ast.expr.RangeExpression;
 import org.codehaus.groovy.ast.expr.SpreadExpression;
 import org.codehaus.groovy.ast.expr.SpreadMapExpression;
 import org.codehaus.groovy.ast.expr.StaticMethodCallExpression;
+import org.codehaus.groovy.ast.expr.SwitchExpression;
 import org.codehaus.groovy.ast.expr.TernaryExpression;
 import org.codehaus.groovy.ast.expr.TupleExpression;
 import org.codehaus.groovy.ast.expr.UnaryMinusExpression;
@@ -101,6 +102,7 @@ import org.codehaus.groovy.ast.stmt.ReturnStatement;
 import org.codehaus.groovy.ast.stmt.Statement;
 import org.codehaus.groovy.ast.stmt.SwitchStatement;
 import org.codehaus.groovy.ast.stmt.ThrowStatement;
+import org.codehaus.groovy.ast.stmt.YieldStatement;
 import org.codehaus.groovy.ast.tools.GeneralUtils;
 import org.codehaus.groovy.ast.tools.GenericsUtils;
 import org.codehaus.groovy.ast.tools.WideningCategories;
@@ -1334,7 +1336,6 @@ public class TypeInferencingVisitorWithRequestor extends ClassCodeVisitorSupport
 
     @Override
     public void visitForLoop(final ForStatement node) {
-        visitStatement(node);
         visitStatementAnnotations(node);
 
         completeExpressionStack.add(node);
@@ -1885,7 +1886,7 @@ public class TypeInferencingVisitorWithRequestor extends ClassCodeVisitorSupport
 
                     Statement lastStmt = (caseStatement.getCode() instanceof BlockStatement block && !block.isEmpty())
                                             ? DefaultGroovyMethods.last(block.getStatements()) : caseStatement.getCode();
-                    if (lastStmt instanceof BreakStatement || lastStmt instanceof ContinueStatement || lastStmt instanceof ReturnStatement || lastStmt instanceof ThrowStatement) {
+                    if (lastStmt instanceof BreakStatement || lastStmt instanceof ContinueStatement || lastStmt instanceof ReturnStatement || lastStmt instanceof ThrowStatement || lastStmt instanceof YieldStatement) {
                         types.clear();
                     }
                 }
@@ -1922,6 +1923,13 @@ public class TypeInferencingVisitorWithRequestor extends ClassCodeVisitorSupport
         } finally {
             scopes.removeLast();
         }
+    }
+
+    public void visitSwitchExpression(final SwitchExpression node) {
+        var stmt = new SwitchStatement(node.getExpression(), node.getCaseStatements(), node.getDefaultStatement());
+        visitSwitch(stmt);
+        ClassNode type = stmt.getNodeMetaData("yieldsType");
+        handleCompleteExpression(node, type, null);
     }
 
     @Override
@@ -2070,6 +2078,24 @@ public class TypeInferencingVisitorWithRequestor extends ClassCodeVisitorSupport
         }
         handleSimpleExpression(node);
         scopes.getLast().forgetCurrentNode();
+    }
+
+    public void visitYieldStatement(final YieldStatement node) {
+        boolean shouldContinue = handleStatement(node);
+        if (shouldContinue) {
+            completeExpressionStack.add(node);
+            try {
+                node.getExpression().visit(this);
+            } finally {
+                completeExpressionStack.removeLast();
+                var yieldsType = primaryTypeStack.removeLast();
+                var switchNode = scopes.getLast().lookupName("##").scopeNode;
+                var switchType = (ClassNode) switchNode.putNodeMetaData("yieldsType", yieldsType);
+                if (switchType != null) {
+                    switchNode.putNodeMetaData("yieldsType", WideningCategories.lowestUpperBound(switchType, yieldsType));
+                }
+            }
+        }
     }
 
     //--------------------------------------------------------------------------
@@ -2882,6 +2908,10 @@ out:    if (inferredTypes[0] == null) {
 
                 @Override public void visitSwitch(final SwitchStatement statement) {
                     // used to capture the type for the closure parameter of a case
+                    result[0] = (expr == statement.getExpression());
+                }
+
+                /* 6.0 */ public void visitYieldStatement(final YieldStatement statement) {
                     result[0] = (expr == statement.getExpression());
                 }
 

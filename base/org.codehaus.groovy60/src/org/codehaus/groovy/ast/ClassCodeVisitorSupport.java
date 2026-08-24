@@ -39,6 +39,7 @@ import org.codehaus.groovy.ast.stmt.SynchronizedStatement;
 import org.codehaus.groovy.ast.stmt.ThrowStatement;
 import org.codehaus.groovy.ast.stmt.TryCatchStatement;
 import org.codehaus.groovy.ast.stmt.WhileStatement;
+import org.codehaus.groovy.ast.stmt.YieldStatement;
 import org.codehaus.groovy.control.SourceUnit;
 import org.codehaus.groovy.syntax.PreciseSyntaxException;
 import org.codehaus.groovy.transform.ErrorCollecting;
@@ -491,6 +492,19 @@ public abstract class ClassCodeVisitorSupport extends CodeVisitorSupport impleme
         visitStatement(statement);
         visitStatementAnnotations(statement);
         super.visitWhileLoop(statement);
+    }
+
+    /**
+     * Visits a {@link YieldStatement}, invoking the statement hook before parent traversal.
+     *
+     * @param statement the yield statement to visit
+     * @see GROOVY-12255
+     * @since 6.0.0
+     */
+    @Override
+    public void visitYieldStatement(final YieldStatement statement) {
+        visitStatement(statement);
+        super.visitYieldStatement(statement);
     }
 
     //--------------------------------------------------------------------------

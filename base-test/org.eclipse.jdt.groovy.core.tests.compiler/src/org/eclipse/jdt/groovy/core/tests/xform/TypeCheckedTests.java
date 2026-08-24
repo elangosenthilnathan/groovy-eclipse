@@ -3437,7 +3437,7 @@ public final class TypeCheckedTests extends GroovyCompilerTestSuite {
 
             "Types.groovy",
             "class C<T> {\n" +
-            "  private T t\n" +
+            "  public T t\n" +
             "  C(T item) {\n" +
             "    t = item\n" +
             "  }\n" +

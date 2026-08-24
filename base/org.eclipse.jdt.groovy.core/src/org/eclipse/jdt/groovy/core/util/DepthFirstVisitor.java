@@ -71,6 +71,7 @@ import org.codehaus.groovy.ast.expr.RangeExpression;
 import org.codehaus.groovy.ast.expr.SpreadExpression;
 import org.codehaus.groovy.ast.expr.SpreadMapExpression;
 import org.codehaus.groovy.ast.expr.StaticMethodCallExpression;
+import org.codehaus.groovy.ast.expr.SwitchExpression;
 import org.codehaus.groovy.ast.expr.TernaryExpression;
 import org.codehaus.groovy.ast.expr.TupleExpression;
 import org.codehaus.groovy.ast.expr.UnaryMinusExpression;
@@ -94,6 +95,7 @@ import org.codehaus.groovy.ast.stmt.SynchronizedStatement;
 import org.codehaus.groovy.ast.stmt.ThrowStatement;
 import org.codehaus.groovy.ast.stmt.TryCatchStatement;
 import org.codehaus.groovy.ast.stmt.WhileStatement;
+import org.codehaus.groovy.ast.stmt.YieldStatement;
 import org.codehaus.groovy.classgen.BytecodeExpression;
 import org.codehaus.groovy.classgen.Verifier;
 import org.codehaus.groovy.runtime.GeneratedClosure;
@@ -385,11 +387,7 @@ public abstract class DepthFirstVisitor implements GroovyClassVisitor, GroovyCod
         for (Statement stmt : statement.getCatchStatements()) {
             stmt.visit(this);
         }
-        if (statement.getFinallyStatement() instanceof EmptyStatement) {
-            visitEmptyStatement((EmptyStatement) statement.getFinallyStatement());
-        } else {
-            visitIfPresent(statement.getFinallyStatement());
-        }
+        visitIfPresent(statement.getFinallyStatement());
         visitStatement(statement);
     }
 
@@ -397,6 +395,11 @@ public abstract class DepthFirstVisitor implements GroovyClassVisitor, GroovyCod
     public void visitWhileLoop(WhileStatement statement) {
         statement.getBooleanExpression().visit(this);
         statement.getLoopBlock().visit(this);
+        visitStatement(statement);
+    }
+
+    public void visitYieldStatement(YieldStatement statement) {
+        statement.getExpression().visit(this);
         visitStatement(statement);
     }
 
@@ -632,6 +635,14 @@ public abstract class DepthFirstVisitor implements GroovyClassVisitor, GroovyCod
             visitClass(type); // visit enum constant methods
         }
 
+        visitExpression(expression);
+    }
+
+    public void visitSwitchExpression(SwitchExpression expression) {
+        visitAnnotations(expression.getAnnotations());
+        expression.getExpression().visit(this);
+        expression.getCaseStatements().forEach(s -> s.visit(this));
+        expression.getDefaultStatement().visit(this);
         visitExpression(expression);
     }
 

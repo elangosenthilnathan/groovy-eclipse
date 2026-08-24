@@ -342,42 +342,84 @@ public class Verifier implements GroovyClassVisitor, Opcodes {
         checkFinalVariables(node);
     }
 
+    /**
+     * Rejects unrelated inherited default methods (JLS 8.4.8 / 9.4.1).
+     * Uses each interface's own methods; {@code getAllDeclaredMethods()} would
+     * rebuild a hierarchy map per type and revisit inherited defaults.
+     */
     private static void checkForDuplicateDefaultMethods(final ClassNode node) {
         /* GRECLIPSE edit -- JDT yields better error
-        if (node.getInterfaces().length < 2) return;
-
-        Map<String, MethodNode> defaultMethods = new HashMap<>(8);
-        Set<String> declared = node.getAllDeclaredMethods().stream()
-            .filter(m -> !m.isDefault())
-            .map(MethodNodeUtils::methodDescriptorWithoutReturnType)
-            .collect(Collectors.toSet());
-        node.getAllInterfaces().stream()
-                .flatMap(i -> i.getAllDeclaredMethods().stream())
-                .filter(MethodNode::isDefault)
-                .forEach(m -> {
-                    String signature = MethodNodeUtils.methodDescriptorWithoutReturnType(m);
-                    if (declared.contains(signature)) {
-                        return;
-                    }
-                    MethodNode existing = defaultMethods.get(signature);
-                    if (existing == null) {
-                        defaultMethods.put(signature, m);
-                        return;
-                    }
-
-                    ClassNode existingDeclaringClass = existing.getDeclaringClass();
-                    ClassNode currentDeclaringClass = m.getDeclaringClass();
-                    if (!(existingDeclaringClass.equals(currentDeclaringClass)
-                            || existingDeclaringClass.implementsInterface(currentDeclaringClass)
-                            || currentDeclaringClass.implementsInterface(existingDeclaringClass))) {
-                        throw new RuntimeParserException(
-                                (node.isInterface() ? "interface" : "class") +  " " + node.getName()
-                                        + " inherits unrelated defaults for " + MethodNodeUtils.methodDescriptor(m, true)
-                                        + " from types " + existingDeclaringClass.getName()
-                                        + " and " + currentDeclaringClass.getName(), node);
-                    }
-                });
+        if (node.getInterfaces().length < 2) {
+            return;
+        }
+        Map<String, MethodNode> defaultsBySignature = new HashMap<>(8);
+        Set<String> overridden = null;
+        for (ClassNode iface : node.getAllInterfaces()) {
+            for (MethodNode method : iface.getMethods()) {
+                if (method.isDefault()) {
+                    overridden = checkUnrelatedDefault(node, method, defaultsBySignature, overridden);
+                }
+            }
+        }
         */
+    }
+
+    /**
+     * Records {@code method} or rejects it when an unrelated default of the
+     * same signature was already seen and the type does not override it.
+     *
+     * @return the (possibly newly built) set of overriding signatures
+     */
+    @SuppressWarnings("unused")
+    private static Set<String> checkUnrelatedDefault(final ClassNode node, final MethodNode method,
+            final Map<String, MethodNode> defaultsBySignature, Set<String> overridden) {
+        String signature = MethodNodeUtils.methodDescriptorWithoutReturnType(method);
+        if (overridden != null && overridden.contains(signature)) {
+            return overridden;
+        }
+        MethodNode existing = defaultsBySignature.putIfAbsent(signature, method);
+        if (existing == null || isSameOrRelatedDefault(existing, method)) {
+            return overridden;
+        }
+        if (overridden == null) {
+            overridden = collectNonDefaultMethodSignatures(node);
+            if (overridden.contains(signature)) {
+                return overridden;
+            }
+        }
+        ClassNode existingDeclaringClass = existing.getDeclaringClass();
+        ClassNode currentDeclaringClass = method.getDeclaringClass();
+        throw new RuntimeParserException(
+                (node.isInterface() ? "interface" : "class") +  " " + node.getName()
+                        + " inherits unrelated defaults for " + MethodNodeUtils.methodDescriptor(method, true)
+                        + " from types " + existingDeclaringClass.getName()
+                        + " and " + currentDeclaringClass.getName(), node);
+    }
+
+    private static boolean isSameOrRelatedDefault(final MethodNode existing, final MethodNode method) {
+        ClassNode existingDeclaringClass = existing.getDeclaringClass();
+        ClassNode currentDeclaringClass = method.getDeclaringClass();
+        return existingDeclaringClass.equals(currentDeclaringClass)
+                || existingDeclaringClass.implementsInterface(currentDeclaringClass)
+                || currentDeclaringClass.implementsInterface(existingDeclaringClass);
+    }
+
+    /**
+     * Signatures of methods declared on {@code node} or a superclass. These hide
+     * inherited interface defaults; abstracts on other interfaces do not.
+     */
+    private static Set<String> collectNonDefaultMethodSignatures(final ClassNode node) {
+        Set<String> declared = null;
+        for (ClassNode cn = node; cn != null && !isObjectType(cn); cn = cn.getSuperClass()) {
+            for (MethodNode method : cn.getMethods()) {
+                if (method.isDefault()) continue;
+                if (declared == null) {
+                    declared = new HashSet<>();
+                }
+                declared.add(MethodNodeUtils.methodDescriptorWithoutReturnType(method));
+            }
+        }
+        return declared == null ? Collections.emptySet() : declared;
     }
 
     private static final String[] INVALID_COMPONENTS = {"clone", "finalize", "getClass", "hashCode", "notify", "notifyAll", "toString", "wait"};

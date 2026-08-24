@@ -94,6 +94,7 @@ public class WriterController {
     private List<String> superMethodNames = new ArrayList<>();
     private MethodPointerExpressionWriter methodPointerExpressionWriter;
     private MethodReferenceExpressionWriter methodReferenceExpressionWriter;
+    private SwitchExpressionWriter switchExpressionWriter;
 
     /**
      * Initializes this controller with compilation context and ASM infrastructure.
@@ -159,6 +160,7 @@ public class WriterController {
         this.lambdaWriter = new LambdaWriter(this);
         this.methodPointerExpressionWriter = new MethodPointerExpressionWriter(this);
         this.methodReferenceExpressionWriter = new MethodReferenceExpressionWriter(this);
+        this.switchExpressionWriter = new SwitchExpressionWriter(this);
         this.internalBaseClassName = BytecodeHelper.getClassInternalName(cn.getSuperClass());
         this.acg = asmClassGenerator;
         this.context = gcon;
@@ -183,7 +185,6 @@ public class WriterController {
         return visitor instanceof PeepholeOptimizingClassVisitor
                 ? visitor
                 : new PeepholeOptimizingClassVisitor(visitor);
-        // GRECLIPSE end
     }
 
     /**
@@ -416,6 +417,16 @@ public class WriterController {
      */
     public MethodReferenceExpressionWriter getMethodReferenceExpressionWriter() {
         return methodReferenceExpressionWriter;
+    }
+
+    /**
+     * Returns the SwitchExpressionWriter for compiling first-class switch
+     * expressions (JEP 361).
+     *
+     * @since 6.0.0
+     */
+    public SwitchExpressionWriter getSwitchExpressionWriter() {
+        return switchExpressionWriter;
     }
 
     //--------------------------------------------------------------------------

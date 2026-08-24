@@ -48,6 +48,7 @@ import org.codehaus.groovy.ast.expr.MethodCallExpression;
 import org.codehaus.groovy.ast.expr.StaticMethodCallExpression;
 import org.codehaus.groovy.ast.expr.VariableExpression;
 import org.codehaus.groovy.ast.stmt.BlockStatement;
+import org.codehaus.groovy.ast.stmt.EmptyStatement;
 import org.codehaus.groovy.ast.stmt.ExpressionStatement;
 import org.codehaus.groovy.ast.stmt.Statement;
 import org.codehaus.groovy.eclipse.core.GroovyCore;
@@ -353,8 +354,11 @@ public class ASTNodeFinder extends DepthFirstVisitor {
     @Override
     protected void visitStatement(Statement statement) {
         super.visitStatement(statement);
-        if (!(statement instanceof BlockStatement) &&
-                !(statement instanceof ExpressionStatement)) {
+        if (statement instanceof BlockStatement ||
+            statement instanceof EmptyStatement ||
+            statement instanceof ExpressionStatement) {
+            // don't bother
+        } else {
             check(statement);
         }
     }

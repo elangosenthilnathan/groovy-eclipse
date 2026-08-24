@@ -19,7 +19,6 @@
 package org.apache.groovy.parser.antlr4;
 
 import groovy.lang.Tuple2;
-import groovy.lang.Tuple3;
 import groovy.transform.*;
 import groovyjarjarantlr4.v4.runtime.ANTLRErrorListener;
 import groovyjarjarantlr4.v4.runtime.CharStream;
@@ -97,6 +96,7 @@ import org.codehaus.groovy.ast.expr.PropertyExpression;
 import org.codehaus.groovy.ast.expr.RangeExpression;
 import org.codehaus.groovy.ast.expr.SpreadExpression;
 import org.codehaus.groovy.ast.expr.SpreadMapExpression;
+import org.codehaus.groovy.ast.expr.SwitchExpression;
 import org.codehaus.groovy.ast.expr.TernaryExpression;
 import org.codehaus.groovy.ast.expr.TupleExpression;
 import org.codehaus.groovy.ast.expr.UnaryMinusExpression;
@@ -120,11 +120,13 @@ import org.codehaus.groovy.ast.stmt.SynchronizedStatement;
 import org.codehaus.groovy.ast.stmt.ThrowStatement;
 import org.codehaus.groovy.ast.stmt.TryCatchStatement;
 import org.codehaus.groovy.ast.stmt.WhileStatement;
+import org.codehaus.groovy.ast.stmt.YieldStatement;
 import org.codehaus.groovy.ast.tools.ClosureUtils;
 import org.codehaus.groovy.classgen.Verifier;
 import org.codehaus.groovy.control.CompilationFailedException;
 import org.codehaus.groovy.control.CompilePhase;
 import org.codehaus.groovy.control.ModuleImportHelper;
+import org.codehaus.groovy.control.ResolveVisitor;
 import org.codehaus.groovy.control.SourceUnit;
 import org.codehaus.groovy.control.messages.SyntaxErrorMessage;
 import org.codehaus.groovy.runtime.StringGroovyMethods;
@@ -152,6 +154,7 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.function.Function;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 import static groovy.lang.Tuple.tuple;
@@ -163,11 +166,10 @@ import static org.apache.groovy.parser.antlr4.util.PositionConfigureUtils.config
 import static org.codehaus.groovy.ast.tools.GeneralUtils.assignX;
 import static org.codehaus.groovy.ast.tools.GeneralUtils.block;
 import static org.codehaus.groovy.ast.tools.GeneralUtils.callThisX;
-import static org.codehaus.groovy.ast.tools.GeneralUtils.callX;
 import static org.codehaus.groovy.ast.tools.GeneralUtils.closureX;
 import static org.codehaus.groovy.ast.tools.GeneralUtils.declX;
 import static org.codehaus.groovy.ast.tools.GeneralUtils.listX;
-import static org.codehaus.groovy.ast.tools.GeneralUtils.returnS;
+import static org.codehaus.groovy.ast.tools.GeneralUtils.mayCompleteNormally;
 import static org.codehaus.groovy.ast.tools.GeneralUtils.stmt;
 import static org.codehaus.groovy.ast.tools.GeneralUtils.varX;
 import static org.codehaus.groovy.classgen.asm.util.TypeUtil.isPrimitiveType;
@@ -239,10 +241,10 @@ public class AstBuilder extends GroovyParserBaseVisitor<Object> {
         return configureAST(astNode);
     }
 
-    /*private <T extends ASTNode> T configureAST(T astNode, ASTNode start, ASTNode until) {
+    private <T extends ASTNode> T configureAST(T astNode, ASTNode start, ASTNode until) {
         PositionConfigureUtils.configureAST(astNode, start, until);
         return configureAST(astNode);
-    }*/
+    }
 
     private <T extends ASTNode> T configureAST(T astNode, GroovyParser.GroovyParserRuleContext ctx) {
         PositionConfigureUtils.configureAST(astNode, ctx);
@@ -1122,7 +1124,7 @@ public class AstBuilder extends GroovyParserBaseVisitor<Object> {
 
     @Override
     public ReturnStatement visitReturnStmtAlt(final ReturnStmtAltContext ctx) {
-        if (switchExpressionRuleContextStack.peek() instanceof SwitchExpressionContext) {
+        if (isInsideSwitchExpression()) {
             throw createParsingFailedException("switch expression does not support `return`", ctx);
         }
 
@@ -1161,26 +1163,38 @@ public class AstBuilder extends GroovyParserBaseVisitor<Object> {
         return configureAST(new BreakStatement(label), ctx);
     }
 
+    /* GRECLIPSE edit
     @Override
-    public ReturnStatement visitYieldStatement(final YieldStatementContext ctx) {
-        ReturnStatement returnStatement = (ReturnStatement) returnS((Expression) this.visit(ctx.expression()));
-        returnStatement.putNodeMetaData(IS_YIELD_STATEMENT, Boolean.TRUE);
-        return configureAST(returnStatement, ctx);
+    public YieldStatement visitYieldStatement(final YieldStatementContext ctx) {
+        return configureAST(yieldS((Expression) this.visit(ctx.expression())), ctx);
     }
+    */
 
     @Override
-    public ExpressionStatement visitYieldReturnStmtAlt(final YieldReturnStmtAltContext ctx) {
+    public Statement visitYieldReturnStmtAlt(final YieldReturnStmtAltContext ctx) {
         Expression expr = (Expression) this.visit(ctx.expression());
         return configureAST(new ExpressionStatement(AsyncTransformHelper.buildYieldReturnCall(expr)), ctx);
     }
 
     @Override
-    public ReturnStatement visitYieldStmtAlt(final YieldStmtAltContext ctx) {
+    public YieldStatement visitYieldStmtAlt(final YieldStmtAltContext ctx) {
+        /* GRECLIPSE edit
         return configureAST(this.visitYieldStatement(ctx.yieldStatement()), ctx);
+        */
+        var expr = (Expression) this.visit(ctx.yieldStatement().expression());
+        return configureAST(new YieldStatement(expr), ctx.yieldStatement());
+        // GRECLIPSE end
     }
 
     @Override
     public ExpressionStatement visitDeferStmtAlt(final DeferStmtAltContext ctx) {
+        if (!Boolean.TRUE.equals(asyncClosureStack.peek())) {
+            throw createParsingFailedException(
+                    asyncClosureStack.contains(Boolean.TRUE)
+                            ? "defer must be used directly in the body of an async closure, not in a nested closure"
+                            : "defer must be used inside an async closure",
+                    ctx);
+        }
         Expression action;
         ExpressionStatement stmtExprStmt = (ExpressionStatement) this.visit(ctx.statementExpression());
         Expression expr = stmtExprStmt.getExpression();
@@ -1213,197 +1227,296 @@ public class AstBuilder extends GroovyParserBaseVisitor<Object> {
     }
 
     /**
-     * <pre>
-     * switch(x) {
-     *   case 0, 1 -> 'a'
-     *   case 2    -> 'b'
-     *   default   -> 'z'
-     * }
-     * </pre>
-     * will be transformed to:
-     * <pre>
-     * { ->
-     *     switch(x) {
-     *       case 0:
-     *       case 1:  return 'a'
-     *       case 2:  return 'b'
-     *       default: return 'z'
-     *     }
-     * }.call()
-     * </pre>
+     * Builds a {@link SwitchExpression} as specified by JEP 361.
+     * Arrow arms that are a single expression become {@link YieldStatement}s;
+     * colon arms use explicit {@code yield}.
      */
     @Override
-    public MethodCallExpression visitSwitchExpression(final SwitchExpressionContext ctx) {
+    public SwitchExpression visitSwitchExpression(final SwitchExpressionContext ctx) {
         switchExpressionRuleContextStack.push(ctx);
         try {
             validateSwitchExpressionLabels(ctx);
-            List<Tuple3<List<Statement>, Boolean, Boolean>> statementsAndArrowAndYieldOrThrow =
-                    ctx.switchBlockStatementExpressionGroup().stream().map(this::visitSwitchBlockStatementExpressionGroup).toList();
-            if (statementsAndArrowAndYieldOrThrow.isEmpty()) {
+            List<Statement> statementList = ctx.switchBlockStatementExpressionGroup().stream()
+                    .map(this::visitSwitchBlockStatementExpressionGroup)
+                    .reduce(new LinkedList<>(), (r, e) -> {
+                        r.addAll(e);
+                        return r;
+                    });
+            if (statementList.isEmpty()) {
                 throw createParsingFailedException("`case` or `default` branches are expected", ctx.LBRACE());
-            } else {
-                var tuple = last(statementsAndArrowAndYieldOrThrow);
-                if (!tuple.getV2() && !tuple.getV3()) { // if no arrow, yield or throw is required
-                    throw createParsingFailedException("`yield` or `throw` is expected", tuple.getV1().get(0));
-                }
+            }
+
+            // Last group must complete: every path yields or throws (JEP 361).
+            // Intermediate colon groups may still fall through. Arrow arms
+            // are independent: any arm that completes normally is incomplete.
+            // Statement-position switches with an incomplete arrow block are
+            // rewritten to SwitchStatement in visitCommandExprAlt.
+            Statement lastArm = last(statementList);
+            if (switchArmsIncomplete(statementList) && !isSwitchUsedAsStatement(ctx)) {
+                throw createParsingFailedException("`yield` or `throw` is expected", lastArm);
             }
 
             List<CaseStatement> caseStatements = new ArrayList<>();
             Statement defaultStatement = null;
-
-            for (var tuple : statementsAndArrowAndYieldOrThrow) {
-                for (Statement s : tuple.getV1()) {
-                    if (s instanceof CaseStatement c) {
-                        if (defaultStatement != null) {
-                            throw createParsingFailedException("default case should appear last", defaultStatement);
-                        }
-                        caseStatements.add(c);
-                    } else if (isTrue(s, IS_SWITCH_DEFAULT)) {
-                        if (defaultStatement != null) {
-                            throw createParsingFailedException("switch expression should have only one default case", s);
-                        }
-                        defaultStatement = s;
+            for (Statement statement : statementList) {
+                if (statement instanceof CaseStatement caseStatement) {
+                    if (defaultStatement != null) {
+                        throw createParsingFailedException("default case should appear last", defaultStatement);
                     }
+                    caseStatements.add(caseStatement);
+                } else if (isTrue(statement, IS_SWITCH_DEFAULT)) {
+                    if (defaultStatement != null) {
+                        throw createParsingFailedException("switch expression should have only one default case", statement);
+                    }
+                    defaultStatement = statement;
                 }
             }
 
-            Statement statement = configureAST(
-                    new SwitchStatement(
+            return configureAST(
+                    new SwitchExpression(
                             this.visitExpressionInPar(ctx.expressionInPar()),
                             caseStatements,
-                            defaultStatement != null ? defaultStatement : EmptyStatement.INSTANCE
-                    ),
+                            defaultStatement != null ? defaultStatement : EmptyStatement.INSTANCE),
                     ctx);
-            statement = createBlockStatement(List.of(statement));
-
-            MethodCallExpression immediateExecution = callX(closureX(null, statement), CALL_STR);
-            immediateExecution.setImplicitThis(false);
-            return immediateExecution;
         } finally {
             switchExpressionRuleContextStack.pop();
         }
     }
 
     @Override
-    public Tuple3<List<Statement>, Boolean, Boolean> visitSwitchBlockStatementExpressionGroup(SwitchBlockStatementExpressionGroupContext ctx) {
-        int labelCnt = ctx.switchExpressionLabel().size();
-        List<Token> firstLabelHolder = new ArrayList<>(1);
-        final int[] arrowCntHolder = new int[1];
+    public List<Statement> visitSwitchBlockStatementExpressionGroup(final SwitchBlockStatementExpressionGroupContext ctx) {
+        List<SwitchExpressionLabel> labels = ctx.switchExpressionLabel().stream()
+                .map(this::switchExpressionLabel)
+                .toList();
+        if (labels.isEmpty()) {
+            throw createParsingFailedException("`case` or `default` branches are expected", ctx);
+        }
 
-        boolean[] isArrowHolder = new boolean[1];
-        boolean[] hasResultStmtHolder = new boolean[1];
-        List<Statement> result = (List<Statement>) ctx.switchExpressionLabel().stream()
-                .map(e -> (Object) this.visitSwitchExpressionLabel(e))
-                .reduce(new ArrayList<Statement>(4), (r, e) -> {
-                    List<Statement> statementList = (List<Statement>) r;
-                    Tuple3<Token, List<Expression>, Integer> tuple = (Tuple3<Token, List<Expression>, Integer>) e;
+        if (labels.stream().anyMatch(SwitchExpressionLabel::isArrow) && labels.size() > 1) {
+            throw createParsingFailedException("`case ... ->` does not support falling through cases", labels.get(0).keyword());
+        }
 
-                    boolean isArrow = ARROW == tuple.getV3();
-                    isArrowHolder[0] = isArrow;
-                    if (isArrow) {
-                        if (++arrowCntHolder[0] > 1 && !firstLabelHolder.isEmpty()) {
-                            throw createParsingFailedException("`case ... ->` does not support falling through cases", firstLabelHolder.get(0));
-                        }
-                    }
+        BlockStatement arm = this.switchExpressionArm(ctx, labels.get(0).isArrow());
+        Token firstKeyword = labels.get(0).keyword();
+        SwitchExpressionLabel lastLabel = last(labels);
 
-                    boolean isLast = labelCnt - 1 == statementList.size();
+        return labels.stream().collect(
+                ArrayList::new,
+                (cases, label) -> this.addSwitchExpressionCases(cases, label, arm, firstKeyword, label == lastLabel),
+                ArrayList::addAll);
+    }
 
-                    BlockStatement codeBlock = this.visitBlockStatements(ctx.blockStatements());
-                    List<Statement> statements = codeBlock.getStatements();
-                    int statementsCnt = statements.size();
-                    if (0 == statementsCnt) {
-                        throw createParsingFailedException("`yield` is expected", ctx.blockStatements());
-                    }
+    private BlockStatement switchExpressionArm(final SwitchBlockStatementExpressionGroupContext ctx, final boolean arrow) {
+        BlockStatement block = this.visitBlockStatements(ctx.blockStatements());
+        List<Statement> statements = block.getStatements();
+        if (statements.isEmpty()) {
+            if (arrow && isEnclosingSwitchUsedAsStatement()) {
+                return block;
+            }
+            throw createParsingFailedException("`yield` is expected", ctx.blockStatements());
+        }
+        if (!arrow) {
+            return block;
+        }
+        if (statements.size() > 1) {
+            throw createParsingFailedException("Expect only 1 statement, but " + statements.size() + " statements found", ctx.blockStatements());
+        }
 
-                    if (isArrow && statementsCnt > 1) {
-                        throw createParsingFailedException("Expect only 1 statement, but " + statementsCnt + " statements found", ctx.blockStatements());
-                    }
+        Statement body = unwrapSingletonBlock(statements.get(0));
+        // GRECLIPSE add
+        if (body instanceof ExpressionStatement stmt) {
+            body = new YieldStatement(stmt.getExpression());
+        }
+        // GRECLIPSE end
+        if (body instanceof YieldStatement || body instanceof ThrowStatement) {
+            return configureAST(createBlockStatement(body), body);
+        }
+        /* GRECLIPSE edit
+        if (body instanceof ExpressionStatement expressionStatement) {
+            return configureAST(
+                    createBlockStatement(configureAST(yieldS(expressionStatement.getExpression()), body)),
+                    body);
+        }
+        */
+        if (mayCompleteNormally(body) && !isEnclosingSwitchUsedAsStatement()) {
+            throw createParsingFailedException("`yield` or `throw` is expected", body);
+        }
+        return configureAST(createBlockStatement(body), body);
+    }
 
-                    if (!isArrow) {
-                        boolean[] hasYieldHolder = new boolean[1];
-                        boolean[] hasThrowHolder = new boolean[1];
-                        codeBlock.visit(new CodeVisitorSupport() {
-                            @Override
-                            public void visitReturnStatement(ReturnStatement statement) {
-                                if (isTrue(statement, IS_YIELD_STATEMENT)) {
-                                    hasYieldHolder[0] = true;
-                                    return;
-                                }
+    private void addSwitchExpressionCases(
+            final List<Statement> cases,
+            final SwitchExpressionLabel label,
+            final BlockStatement arm,
+            final Token firstKeyword,
+            final boolean lastLabel) {
+        switch (label.keyword().getType()) {
+            case CASE -> {
+                List<Expression> values = label.values();
+                for (int i = 0, n = values.size(); i < n; i++) {
+                    CaseStatement caseStatement = new CaseStatement(
+                            values.get(i),
+                            lastLabel && i == n - 1 ? arm : EmptyStatement.INSTANCE);
+                    caseStatement.setArrow(label.isArrow());
+                    cases.add(configureAST(caseStatement, firstKeyword));
+                }
+            }
+            case DEFAULT -> {
+                arm.putNodeMetaData(IS_SWITCH_DEFAULT, Boolean.TRUE);
+                cases.add(arm);
+            }
+            default -> throw createParsingFailedException("Unsupported switch label: " + label.keyword().getText(), label.keyword());
+        }
+    }
 
-                                super.visitReturnStatement(statement);
-                            }
+    private static Statement unwrapSingletonBlock(final Statement statement) {
+        if (statement instanceof BlockStatement block && block.getStatements().size() == 1) {
+            return block.getStatements().get(0);
+        }
+        return statement;
+    }
 
-                            @Override
-                            public void visitThrowStatement(ThrowStatement statement) {
-                                hasThrowHolder[0] = true;
-                            }
-                        });
+    /**
+     * True when this {@code switch} is a statement (value discarded), not the
+     * value of an enclosing switch-expression arm. Nested
+     * {@code case L -> switch (...)} is the latter: the inner switch is an
+     * expression even though the parser sees it as an expression-statement.
+     */
+    private boolean isSwitchUsedAsStatement(final SwitchExpressionContext ctx) {
+        ParserRuleContext p = ctx;
+        while (p != null && !(p instanceof CommandExprAltContext)) {
+            p = p.getParent();
+        }
+        if (!(p instanceof CommandExprAltContext command)
+                || !(command.getParent() instanceof ExpressionStmtAltContext stmtAlt)) {
+            return false;
+        }
+        ParserRuleContext blockStatement = stmtAlt.getParent();
+        ParserRuleContext blockStatements = blockStatement != null ? blockStatement.getParent() : null;
+        ParserRuleContext group = blockStatements != null ? blockStatements.getParent() : null;
+        return !(group instanceof SwitchBlockStatementExpressionGroupContext);
+    }
 
-                        if (hasYieldHolder[0] || hasThrowHolder[0]) {
-                            hasResultStmtHolder[0] = true;
-                        }
+    private boolean isEnclosingSwitchUsedAsStatement() {
+        ParserRuleContext ctx = switchExpressionRuleContextStack.peek();
+        return ctx instanceof SwitchExpressionContext seCtx && isSwitchUsedAsStatement(seCtx);
+    }
 
-                    }
+    private static boolean switchArmsIncomplete(final List<Statement> statementList) {
+        boolean arrow = false;
+        for (Statement statement : statementList) {
+            if (statement instanceof CaseStatement cs && cs.isArrow()) {
+                arrow = true;
+                break;
+            }
+        }
+        if (arrow) {
+            for (Statement statement : statementList) {
+                Statement code = statement instanceof CaseStatement cs ? cs.getCode() : statement;
+                // Comma-separated `case 1, 2 ->` desugars to empty prefixes
+                // that fall through into the shared arm; those are not incomplete.
+                if (!code.isEmpty() && mayCompleteNormally(code)) {
+                    return true;
+                }
+            }
+            return false;
+        }
+        Statement last = last(statementList);
+        Statement lastCode = last instanceof CaseStatement cs ? cs.getCode() : last;
+        return mayCompleteNormally(lastCode);
+    }
 
-                    Statement exprOrBlockStatement = statements.get(0);
-                    if (exprOrBlockStatement instanceof BlockStatement blockStatement) {
-                        List<Statement> branchStatementList = blockStatement.getStatements();
-                        if (1 == branchStatementList.size()) {
-                            exprOrBlockStatement = branchStatementList.get(0);
-                        }
-                    }
+    private static boolean switchExpressionHasIncompleteArm(final SwitchExpression expression) {
+        for (CaseStatement caseStatement : expression.getCaseStatements()) {
+            Statement code = caseStatement.getCode();
+            if (!code.isEmpty() && mayCompleteNormally(code)) {
+                return true;
+            }
+        }
+        Statement dflt = expression.getDefaultStatement();
+        return dflt != null && !dflt.isEmpty() && mayCompleteNormally(dflt);
+    }
 
-                    if (!(exprOrBlockStatement instanceof ReturnStatement || exprOrBlockStatement instanceof ThrowStatement)) {
-                        if (isArrow) {
-                            MethodCallExpression callClosure = callX(
-                                    configureAST(
-                                            closureX(null, exprOrBlockStatement),
-                                            exprOrBlockStatement
-                                    ), CALL_STR);
-                            callClosure.setImplicitThis(false);
-                            Expression resultExpr = exprOrBlockStatement instanceof ExpressionStatement
-                                    ? ((ExpressionStatement) exprOrBlockStatement).getExpression()
-                                    : callClosure;
+    /**
+     * Desugars a statement-position switch expression to a switch statement:
+     * unwrap {@code yield} (value is discarded) and insert {@code break} after
+     * each arrow arm that would otherwise fall through.
+     */
+    private SwitchStatement switchExpressionAsStatement(final SwitchExpression expression) {
+        List<CaseStatement> cases = new ArrayList<>(expression.getCaseStatements().size());
+        for (CaseStatement caseStatement : expression.getCaseStatements()) {
+            Statement code = armCodeAsStatement(caseStatement.getCode());
+            if (caseStatement.isArrow() && !code.isEmpty() && mayCompleteNormally(code)) {
+                code = appendBreak(code);
+            }
+            CaseStatement copy = new CaseStatement(caseStatement.getExpression(), code);
+            copy.setArrow(caseStatement.isArrow());
+            copy.setSourcePosition(caseStatement);
+            cases.add(copy);
+        }
+        Statement dflt = armCodeAsStatement(expression.getDefaultStatement());
+        SwitchStatement statement = new SwitchStatement(
+                expression.getExpression(),
+                cases,
+                dflt != null ? dflt : EmptyStatement.INSTANCE);
+        statement.setSourcePosition(expression);
+        return statement;
+    }
 
-                            codeBlock = configureAST(
-                                    createBlockStatement(configureAST(
-                                            returnS(resultExpr),
-                                            exprOrBlockStatement
-                                    )),
-                                    exprOrBlockStatement
-                            );
-                        }
-                    }
+    private Statement armCodeAsStatement(final Statement code) {
+        if (code == null || code.isEmpty()) {
+            return code;
+        }
+        if (code instanceof YieldStatement ys) {
+            ExpressionStatement es = new ExpressionStatement(ys.getExpression());
+            es.setSourcePosition(ys);
+            return es;
+        }
+        if (code instanceof BlockStatement block) {
+            block.getStatements().replaceAll(this::armCodeAsStatement);
+            return block;
+        }
+        if (code instanceof IfStatement iff) {
+            iff.setIfBlock(armCodeAsStatement(iff.getIfBlock()));
+            iff.setElseBlock(armCodeAsStatement(iff.getElseBlock()));
+            return iff;
+        }
+        if (code instanceof TryCatchStatement tcs) {
+            tcs.setTryStatement(armCodeAsStatement(tcs.getTryStatement()));
+            tcs.setFinallyStatement(armCodeAsStatement(tcs.getFinallyStatement()));
+            tcs.getCatchStatements().forEach(cs -> cs.setCode(armCodeAsStatement(cs.getCode())));
+            return tcs;
+        }
+        if (code instanceof SynchronizedStatement ss) {
+            ss.setCode(armCodeAsStatement(ss.getCode()));
+            return ss;
+        }
+        return code;
+    }
 
-                    switch (tuple.getV1().getType()) {
-                        case CASE:
-                            if (!asBoolean(statementList)) {
-                                firstLabelHolder.add(tuple.getV1());
-                            }
-                            for (int i = 0, n = tuple.getV2().size(); i < n; i += 1) {
-                                Expression expr = tuple.getV2().get(i);
-                                statementList.add(
-                                        configureAST(
-                                                new CaseStatement(
-                                                        expr,
+    private static Statement appendBreak(final Statement code) {
+        if (code instanceof BlockStatement block) {
+            block.addStatement(new BreakStatement());
+            return block;
+        }
+        return block(code, new BreakStatement());
+    }
 
-                                                        // check whether processing the last label. if yes, block statement should be attached.
-                                                        (isLast && i == n - 1) ? codeBlock
-                                                                : EmptyStatement.INSTANCE
-                                                ),
-                                                firstLabelHolder.get(0)));
-                            }
-                            break;
-                        case DEFAULT:
-                            codeBlock.putNodeMetaData(IS_SWITCH_DEFAULT, Boolean.TRUE);
-                            statementList.add(codeBlock);
-                            break;
-                    }
-
-                    return statementList;
-                });
-
-        return tuple(result, isArrowHolder[0], hasResultStmtHolder[0]);
+    /**
+     * True when a switch-expression frame is more recent than any closure or
+     * lambda frame. {@code return} in that region would leave the enclosing
+     * method rather than complete the expression (JEP 361).
+     */
+    private boolean isInsideSwitchExpression() {
+        for (var ctx : switchExpressionRuleContextStack) {
+            if (ctx instanceof SwitchExpressionContext) {
+                return true;
+            }
+            if (ctx instanceof ClosureContext || ctx instanceof StandardLambdaExpressionContext) {
+                return false;
+            }
+        }
+        return false;
     }
 
     private void validateSwitchExpressionLabels(SwitchExpressionContext ctx) {
@@ -1418,14 +1531,17 @@ public class AstBuilder extends GroovyParserBaseVisitor<Object> {
     }
 
     @Override
-    public Tuple3<Token, List<Expression>, Integer> visitSwitchExpressionLabel(SwitchExpressionLabelContext ctx) {
-        final Integer acType = ctx.ac.getType();
-        if (asBoolean(ctx.CASE())) {
-            return tuple(ctx.CASE().getSymbol(), this.visitExpressionList(ctx.expressionList()), acType);
-        } else if (asBoolean(ctx.DEFAULT())) {
-            return tuple(ctx.DEFAULT().getSymbol(), Collections.singletonList(EmptyExpression.INSTANCE), acType);
-        }
+    public Object visitSwitchExpressionLabel(final SwitchExpressionLabelContext ctx) {
+        return this.switchExpressionLabel(ctx);
+    }
 
+    private SwitchExpressionLabel switchExpressionLabel(final SwitchExpressionLabelContext ctx) {
+        if (asBoolean(ctx.CASE())) {
+            return new SwitchExpressionLabel(ctx.CASE().getSymbol(), this.visitExpressionList(ctx.expressionList()), ctx.ac.getType());
+        }
+        if (asBoolean(ctx.DEFAULT())) {
+            return new SwitchExpressionLabel(ctx.DEFAULT().getSymbol(), Collections.singletonList(EmptyExpression.INSTANCE), ctx.ac.getType());
+        }
         throw createParsingFailedException("Unsupported switch expression label: " + ctx.getText(), ctx);
     }
 
@@ -2649,8 +2765,18 @@ public class AstBuilder extends GroovyParserBaseVisitor<Object> {
     }
 
     @Override
-    public ExpressionStatement visitCommandExprAlt(final CommandExprAltContext ctx) {
-        return configureAST(new ExpressionStatement(this.visitCommandExpression(ctx.commandExpression())), ctx);
+    public Statement visitCommandExprAlt(final CommandExprAltContext ctx) {
+        Expression expr = this.visitCommandExpression(ctx.commandExpression());
+        // Statement-position `switch` with `->` is parsed as a SwitchExpression
+        // (switchStatement is colon-only). If an arrow block does not yield,
+        // rewrite it to SwitchStatement so the block need not yield (JEP 361
+        // statement rules). Expression-position incomplete arms already errored.
+        if (expr instanceof SwitchExpression se
+                && ctx.getParent() instanceof ExpressionStmtAltContext
+                && switchExpressionHasIncompleteArm(se)) {
+            return configureAST(switchExpressionAsStatement(se), ctx);
+        }
+        return configureAST(new ExpressionStatement(expr), ctx);
     }
 
     @Override
@@ -2666,6 +2792,24 @@ public class AstBuilder extends GroovyParserBaseVisitor<Object> {
         }
 
         Expression baseExpr = (Expression) this.visit(ctx.expression());
+
+        // GROOVY-10355: "(name) in x" / "(name) as T" arrive as a cast of the keyword identifier
+        // plus an argument list; restore the binary reading
+        if (hasArgumentList && !hasCommandArgument && baseExpr instanceof CastExpression) {
+            String keyword = baseExpr.getNodeMetaData(CAST_OF_BINARY_KEYWORD);
+            if (keyword != null) {
+                Expression repaired = this.repairBinaryKeywordCast((CastExpression) baseExpr, keyword, ctx);
+                if (repaired != null) {
+                    return repaired;
+                }
+                // the argument shape has no faithful rewrite; should the cast's type fail to
+                // resolve, at least explain how the expression was read
+                String name = ((CastExpression) baseExpr).getType().getName();
+                baseExpr.putNodeMetaData(ResolveVisitor.CAST_RESOLVE_HINT,
+                        "; '(" + name + ") " + keyword + " ...' is parsed as a cast of '" + keyword
+                                + "' - the arguments cannot be read as the right-hand side of a binary '" + keyword + "'");
+            }
+        }
 
         if ((hasArgumentList || hasCommandArgument) && !isInsideParentheses(baseExpr)
                 && baseExpr instanceof BinaryExpression && !"[".equals(((BinaryExpression) baseExpr).getOperation().getText())) {
@@ -2726,6 +2870,136 @@ public class AstBuilder extends GroovyParserBaseVisitor<Object> {
                                 }
                         ),
                 ctx);
+    }
+
+    /**
+     * Rebuilds {@code (name) in x} as a binary {@code in} expression and {@code (name) as T}
+     * as a coercion, from the mis-parsed cast-plus-argument-list shape (GROOVY-10355).
+     * The whole command argument arrives as one expression, so the repaired reading is
+     * spliced in at relational precedence — {@code (x) in list && true} groups as
+     * {@code (x in list) && true}, matching the unparenthesized form.
+     * Returns {@code null} when the argument shape does not permit a faithful rewrite.
+     */
+    private Expression repairBinaryKeywordCast(final CastExpression cast, final String keyword, final CommandExpressionContext ctx) {
+        Expression argumentList = this.visitEnhancedArgumentListInPar(ctx.enhancedArgumentListInPar());
+        if (!(argumentList instanceof ArgumentListExpression)) return null;
+        List<Expression> arguments = ((ArgumentListExpression) argumentList).getExpressions();
+        if (arguments.size() != 1) return null;
+
+        Expression keywordSource = cast.getExpression();
+        Function<Expression, Expression> leafRepair;
+        if ("in".equals(keyword)) {
+            org.codehaus.groovy.syntax.Token inToken = new org.codehaus.groovy.syntax.Token(
+                    Types.KEYWORD_IN, keyword, keywordSource.getLineNumber(), keywordSource.getColumnNumber());
+            leafRepair = leaf -> {
+                Expression left = this.createParenNameExpression(cast.getType().getName(), ctx.expression());
+                return configureAST(new BinaryExpression(left, inToken, leaf), ctx, leaf);
+            };
+        } else {
+            leafRepair = leaf -> {
+                ClassNode coercionType = coercionTypeOf(leaf);
+                if (coercionType == null) return null;
+                Expression left = this.createParenNameExpression(cast.getType().getName(), ctx.expression());
+                return configureAST(CastExpression.asExpression(coercionType, left), ctx, leaf);
+            };
+        }
+        Expression repaired = this.spliceAtRelationalPrecedence(arguments.get(0), leafRepair);
+        return repaired == null ? null : configureAST(repaired, ctx);
+    }
+
+    /**
+     * Splices a relational-precedence reading into the left spine of {@code tree}: descends
+     * through operators binding no tighter than relational (equality, regex find/match,
+     * bitwise, logical, ternary/elvis, a further relational or coercion) and applies
+     * {@code leafRepair} to the tighter-bound expression found there. Returns {@code null}
+     * when {@code leafRepair} rejects the leaf.
+     */
+    private Expression spliceAtRelationalPrecedence(final Expression tree, final Function<Expression, Expression> leafRepair) {
+        if (!isInsideParentheses(tree)) {
+            if (tree instanceof BinaryExpression && bindsNoTighterThanRelational(((BinaryExpression) tree).getOperation().getType())) {
+                BinaryExpression binary = (BinaryExpression) tree;
+                Expression spliced = this.spliceAtRelationalPrecedence(binary.getLeftExpression(), leafRepair);
+                if (spliced == null) return null;
+                binary.setLeftExpression(spliced);
+                return configureAST(binary, spliced, binary.getRightExpression());
+            }
+            if (tree instanceof ElvisOperatorExpression) {
+                ElvisOperatorExpression elvis = (ElvisOperatorExpression) tree;
+                Expression spliced = this.spliceAtRelationalPrecedence(elvis.getTrueExpression(), leafRepair);
+                if (spliced == null) return null;
+                return configureAST(new ElvisOperatorExpression(spliced, elvis.getFalseExpression()), spliced, elvis.getFalseExpression());
+            }
+            if (tree instanceof TernaryExpression) {
+                TernaryExpression ternary = (TernaryExpression) tree;
+                Expression spliced = this.spliceAtRelationalPrecedence(ternary.getBooleanExpression().getExpression(), leafRepair);
+                if (spliced == null) return null;
+                BooleanExpression condition = configureAST(new BooleanExpression(spliced), spliced);
+                return configureAST(new TernaryExpression(condition, ternary.getTrueExpression(), ternary.getFalseExpression()), spliced, ternary.getFalseExpression());
+            }
+            if (tree instanceof CastExpression && ((CastExpression) tree).isCoerce()) {
+                CastExpression coercion = (CastExpression) tree;
+                Expression spliced = this.spliceAtRelationalPrecedence(coercion.getExpression(), leafRepair);
+                if (spliced == null) return null;
+                return configureAST(CastExpression.asExpression(coercion.getType(), spliced), spliced, coercion);
+            }
+        }
+        return leafRepair.apply(tree);
+    }
+
+    private static boolean bindsNoTighterThanRelational(final int opType) {
+        switch (opType) {
+          case Types.KEYWORD_IN: case Types.COMPARE_NOT_IN:
+          case Types.KEYWORD_INSTANCEOF: case Types.COMPARE_NOT_INSTANCEOF:
+          case Types.COMPARE_LESS_THAN: case Types.COMPARE_LESS_THAN_EQUAL:
+          case Types.COMPARE_GREATER_THAN: case Types.COMPARE_GREATER_THAN_EQUAL:
+          case Types.COMPARE_EQUAL: case Types.COMPARE_NOT_EQUAL: case Types.COMPARE_TO:
+          case Types.COMPARE_IDENTICAL: case Types.COMPARE_NOT_IDENTICAL:
+          case Types.FIND_REGEX: case Types.MATCH_REGEX:
+          case Types.BITWISE_AND: case Types.BITWISE_XOR: case Types.BITWISE_OR:
+          case Types.LOGICAL_AND: case Types.LOGICAL_OR:
+            return true;
+          default:
+            return false;
+        }
+    }
+
+    /**
+     * The coercion type an expression spells: a (qualified) class name, a class with
+     * type arguments, or an empty-subscript array of either, e.g. {@code String[]}.
+     */
+    private static ClassNode coercionTypeOf(final Expression expression) {
+        if (expression instanceof ClassExpression) { // e.g. List<String>
+            return expression.getType();
+        }
+        if (expression instanceof BinaryExpression) {
+            BinaryExpression subscript = (BinaryExpression) expression;
+            if (Types.LEFT_SQUARE_BRACKET == subscript.getOperation().getType()
+                    && subscript.getRightExpression() instanceof ListExpression
+                    && ((ListExpression) subscript.getRightExpression()).getExpressions().isEmpty()) {
+                ClassNode elementType = coercionTypeOf(subscript.getLeftExpression());
+                return elementType == null ? null : elementType.makeArray();
+            }
+            return null;
+        }
+        String name = qualifiedNameOf(expression);
+        return name == null ? null : ClassHelper.make(name);
+    }
+
+    /** The dotted name an expression spells, when it is a plain variable/property chain. */
+    private static String qualifiedNameOf(final Expression expression) {
+        if (expression instanceof VariableExpression) {
+            return ((VariableExpression) expression).getName();
+        }
+        if (expression instanceof PropertyExpression) {
+            PropertyExpression property = (PropertyExpression) expression;
+            if (property.getProperty() instanceof ConstantExpression) {
+                String qualifier = qualifiedNameOf(property.getObjectExpression());
+                if (qualifier != null) {
+                    return qualifier + "." + property.getPropertyAsString();
+                }
+            }
+        }
+        return null;
     }
 
     /* Validate the following invalid cases:
@@ -3417,34 +3691,199 @@ public class AstBuilder extends GroovyParserBaseVisitor<Object> {
 
     @Override
     public Expression visitUnaryNotExprAlt(final UnaryNotExprAltContext ctx) {
+        Expression expression = (Expression) this.visit(ctx.expression());
+
+        // GROOVY-10355: the unary operator applies to the leading operand of a repaired
+        // "(name) +/- x" binary, not to the whole binary
+        if (isRepairedParenNameBinary(expression) && !isInsideParentheses(expression)) {
+            BinaryExpression repaired = (BinaryExpression) expression;
+            Expression leading = repaired.getLeftExpression();
+            Expression wrapped = asBoolean(ctx.NOT())
+                    ? new NotExpression(leading)
+                    : new BitwiseNegationExpression(leading);
+            repaired.setLeftExpression(configureAST(wrapped, ctx, leading));
+            return configureAST(repaired, ctx);
+        }
+
         if (asBoolean(ctx.NOT())) {
-            return configureAST(
-                    new NotExpression((Expression) this.visit(ctx.expression())),
-                    ctx);
+            return configureAST(new NotExpression(expression), ctx);
         }
 
         if (asBoolean(ctx.BITNOT())) {
-            return configureAST(
-                    new BitwiseNegationExpression((Expression) this.visit(ctx.expression())),
-                    ctx);
+            return configureAST(new BitwiseNegationExpression(expression), ctx);
         }
 
         throw createParsingFailedException("Unsupported unary expression: " + ctx.getText(), ctx);
     }
 
     @Override
-    public CastExpression visitCastExprAlt(final CastExprAltContext ctx) {
+    public Expression visitCastExprAlt(final CastExprAltContext ctx) {
+        String bareName = this.bareCastTypeName(ctx.castParExpression());
+
+        // GROOVY-10355: "(name) + x" / "(name) - x" — class names start with an uppercase letter
+        // by convention, so a bare name whose final segment starts any other way ("foo", "_foo",
+        // "$foo") reads as a value, and we build the binary expression the syntax visually
+        // suggests instead of a cast of a unary expression
+        if (bareName != null && hasValueConventionFinalSegment(bareName) && ctx.expression() instanceof UnaryAddExprAltContext) {
+            UnaryAddExprAltContext uctx = (UnaryAddExprAltContext) ctx.expression();
+            int opType = uctx.op.getType();
+            if (ADD == opType || SUB == opType) {
+                Expression left = this.createParenNameExpression(bareName, ctx.castParExpression());
+                Expression right = (Expression) this.visit(uctx.expression());
+                Expression repaired = this.combineRebalancing(left, this.createGroovyToken(uctx.op), right, opType);
+                repaired.putNodeMetaData(REPAIRED_PAREN_NAME_BINARY, Boolean.TRUE);
+                return configureAST(repaired, ctx);
+            }
+        }
+
+        // GROOVY-10355: "(name) in [x, y]" / "(name) in [k: v]" — the collection literal is
+        // captured as a subscript on the keyword identifier; restore the binary reading
+        if (bareName != null) {
+            Expression subscriptRepair = this.tryRepairKeywordCastSubscript(bareName, ctx);
+            if (subscriptRepair != null) {
+                return subscriptRepair;
+            }
+        }
+
         Expression expr = (Expression) this.visit(ctx.expression());
         if (expr instanceof VariableExpression && ((VariableExpression) expr).isSuperExpression()) {
             throw this.createParsingFailedException("Cannot cast or coerce `super`", ctx); // GROOVY-9391
         }
-        CastExpression cast = new CastExpression(this.visitCastParExpression(ctx.castParExpression()), expr);
+        ClassNode type = this.visitCastParExpression(ctx.castParExpression());
+
+        // GROOVY-10355: "(name) in x" / "(name) as T" — the binary-only keyword is captured as the
+        // cast operand identifier; mark it so visitCommandExpression can restore the binary reading
+        if (bareName != null && expr instanceof VariableExpression) {
+            String operandName = ((VariableExpression) expr).getName();
+            if ("in".equals(operandName) || "as".equals(operandName)) {
+                CastExpression keywordCast = new CastExpression(type, expr);
+                keywordCast.putNodeMetaData(CAST_OF_BINARY_KEYWORD, operandName);
+                return configureAST(keywordCast, ctx);
+            }
+        }
+
+        // GROOVY-10355: "(int)(name) + 10" — the operand was repaired to a binary expression, so
+        // the cast applies to that expression's leftmost operand, not to the whole binary
+        if (isRepairedParenNameBinary(expr) && !isInsideParentheses(expr)) {
+            BinaryExpression repaired = (BinaryExpression) expr;
+            Expression leading = repaired.getLeftExpression();
+            repaired.setLeftExpression(configureAST(new CastExpression(type, leading), ctx, leading));
+            return configureAST(repaired, ctx);
+        }
+
+        CastExpression cast = new CastExpression(type, expr);
+        if (bareName != null && isAmbiguousCastOperand(expr)) {
+            // GROOVY-10355: should the type fail to resolve, the error explains the shape. A map
+            // literal is the one operand with no alternative value reading — a subscript may not
+            // contain map entries either — so its hint states that instead of suggesting the
+            // double-parentheses workaround, which for that shape only leads to the same dead end.
+            String hint = expr instanceof MapExpression
+                    ? "; '(" + bareName + ")' followed by a map literal is a coercion, which requires '" + bareName
+                            + "' to be a class - map entries are not allowed in a plain subscript"
+                    : "; '(" + bareName + ")' followed by an operand is parsed as a cast - if '" + bareName
+                            + "' was meant as a value, wrap it in a second set of parentheses, e.g. ((" + bareName + "))";
+            cast.putNodeMetaData(ResolveVisitor.CAST_RESOLVE_HINT, hint);
+        }
         // GRECLIPSE add
         Expression name = configureAST(new ConstantExpression(null), ctx.castParExpression().intersectionType());
         cast.setNameStart(name.getStart());
         cast.setNameEnd(name.getEnd());
         // GRECLIPSE end
         return configureAST(cast, ctx);
+    }
+
+    /**
+     * The content of the parentheses when it is a bare, possibly-qualified class-or-variable
+     * name — no primitives, generics, array dimensions, annotations or intersections.
+     */
+    private String bareCastTypeName(final CastParExpressionContext ctx) {
+        String text = ctx.intersectionType().getText();
+        if (!BARE_NAME_PATTERN.matcher(text).matches()) return null;
+        if (ClassHelper.isPrimitiveType(ClassHelper.make(text))) return null;
+        return text;
+    }
+
+    /** True when the final segment does not start with an uppercase letter, the class naming convention. */
+    private static boolean hasValueConventionFinalSegment(final String name) {
+        return !Character.isUpperCase(name.codePointAt(name.lastIndexOf('.') + 1));
+    }
+
+    private Expression createParenNameExpression(final String qualifiedName, final GroovyParserRuleContext ctx) {
+        String[] parts = qualifiedName.split("\\.");
+        Expression expression = new VariableExpression(parts[0]);
+        for (int i = 1; i < parts.length; i += 1) {
+            expression = new PropertyExpression(expression, parts[i]);
+        }
+        return configureAST(expression, ctx);
+    }
+
+    private static boolean isRepairedParenNameBinary(final Expression expression) {
+        return expression instanceof BinaryExpression && expression.getNodeMetaData(REPAIRED_PAREN_NAME_BINARY) != null;
+    }
+
+    /**
+     * Rebuilds {@code (name) in [x, y]} / {@code (name) in [k: v]} as a binary {@code in}
+     * expression. The collection literal after {@code in} parses as a subscript on the
+     * keyword identifier, so the literal is rebuilt from the subscript arguments (GROOVY-10355).
+     */
+    private Expression tryRepairKeywordCastSubscript(final String bareName, final CastExprAltContext ctx) {
+        if (!(ctx.expression() instanceof PostfixExprAltContext)) return null;
+        PostfixExpressionContext postfixCtx = ((PostfixExprAltContext) ctx.expression()).postfixExpression();
+        if (postfixCtx.op != null) return null;
+        PathExpressionContext pathCtx = postfixCtx.pathExpression();
+        if (!(pathCtx.primary() instanceof IdentifierPrmrAltContext) || pathCtx.pathElement().size() != 1) return null;
+        IdentifierPrmrAltContext identifierCtx = (IdentifierPrmrAltContext) pathCtx.primary();
+        if (identifierCtx.typeArguments() != null || !"in".equals(identifierCtx.identifier().getText())) return null;
+
+        PathElementContext elementCtx = pathCtx.pathElement(0);
+        Expression right;
+        if (elementCtx.indexPropertyArgs() != null && elementCtx.indexPropertyArgs().LBRACK() != null) {
+            IndexPropertyArgsContext indexCtx = elementCtx.indexPropertyArgs();
+            List<Expression> elements = indexCtx.expressionList() == null
+                    ? new ArrayList<>() : this.visitExpressionList(indexCtx.expressionList());
+            right = configureAST(new ListExpression(elements), indexCtx);
+        } else if (elementCtx.namedPropertyArgs() != null && elementCtx.namedPropertyArgs().LBRACK() != null) {
+            NamedPropertyArgsContext namedCtx = elementCtx.namedPropertyArgs();
+            right = configureAST(new MapExpression(this.visitNamedPropertyArgs(namedCtx)), namedCtx);
+        } else {
+            return null;
+        }
+
+        Expression left = this.createParenNameExpression(bareName, ctx.castParExpression());
+        org.codehaus.groovy.syntax.Token inToken = new org.codehaus.groovy.syntax.Token(Types.KEYWORD_IN, "in",
+                identifierCtx.getStart().getLine(), identifierCtx.getStart().getCharPositionInLine() + 1);
+        return configureAST(new BinaryExpression(left, inToken, right), ctx);
+    }
+
+    /**
+     * Composes {@code left op right} preserving textual left-to-right grouping when either operand
+     * is a repaired "(name) +/- x" binary whose leading operand should bind with this operator first:
+     * {@code L op (name +/- x)} becomes {@code (L op name) +/- x} when {@code op} binds at least as
+     * tightly as +/-, and {@code (name +/- x) op R} becomes {@code name +/- (x op R)} when
+     * {@code op} binds more tightly.
+     */
+    private Expression combineRebalancing(final Expression left, final org.codehaus.groovy.syntax.Token op, final Expression right, final int opType) {
+        boolean atLeastAdditive = POWER == opType || MUL == opType || DIV == opType || MOD == opType || ADD == opType || SUB == opType;
+        if (atLeastAdditive && isRepairedParenNameBinary(right) && !isInsideParentheses(right)) {
+            BinaryExpression repaired = (BinaryExpression) right;
+            repaired.setLeftExpression(this.combineRebalancing(left, op, repaired.getLeftExpression(), opType));
+            return configureAST(repaired, repaired.getLeftExpression(), repaired.getRightExpression());
+        }
+        boolean tighterThanAdditive = POWER == opType || MUL == opType || DIV == opType || MOD == opType;
+        if (tighterThanAdditive && isRepairedParenNameBinary(left) && !isInsideParentheses(left)) {
+            BinaryExpression repaired = (BinaryExpression) left;
+            repaired.setRightExpression(this.combineRebalancing(repaired.getRightExpression(), op, right, opType));
+            return configureAST(repaired, repaired.getLeftExpression(), repaired.getRightExpression());
+        }
+        return configureAST(new BinaryExpression(left, op, right), left, right);
+    }
+
+    private boolean isAmbiguousCastOperand(final Expression expr) {
+        return expr instanceof UnaryPlusExpression || expr instanceof UnaryMinusExpression
+                || expr instanceof PrefixExpression || expr instanceof ListExpression
+                || expr instanceof MapExpression || expr instanceof ClosureExpression
+                || expr instanceof MethodCallExpression // e.g. "(x) in (y)" — a call of "in" on the cast
+                || isInsideParentheses(expr);
     }
 
     @Override
@@ -3467,6 +3906,7 @@ public class AstBuilder extends GroovyParserBaseVisitor<Object> {
 
     @Override
     public Expression visitAsyncClosureExprAlt(final AsyncClosureExprAltContext ctx) {
+        nextClosureIsAsync = true;
         ClosureExpression closure = this.visitClosureOrLambdaExpression(ctx.closureOrLambdaExpression());
         return configureAST(AsyncTransformHelper.transformAsyncClosure(closure), ctx);
     }
@@ -3479,6 +3919,22 @@ public class AstBuilder extends GroovyParserBaseVisitor<Object> {
     @Override
     public Expression visitUnaryAddExprAlt(final UnaryAddExprAltContext ctx) {
         Expression expression = (Expression) this.visit(ctx.expression());
+
+        // GROOVY-10355: the unary operator applies to the leading operand of a repaired
+        // "(name) +/- x" binary, not to the whole binary
+        if (isRepairedParenNameBinary(expression) && !isInsideParentheses(expression)) {
+            BinaryExpression repaired = (BinaryExpression) expression;
+            Expression leading = repaired.getLeftExpression();
+            Expression wrapped;
+            switch (ctx.op.getType()) {
+              case ADD: wrapped = new UnaryPlusExpression(leading); break;
+              case SUB: wrapped = new UnaryMinusExpression(leading); break;
+              default:  wrapped = new PrefixExpression(this.createGroovyToken(ctx.op), leading); break;
+            }
+            repaired.setLeftExpression(configureAST(wrapped, ctx, leading));
+            return configureAST(repaired, ctx);
+        }
+
         switch (ctx.op.getType()) {
           case ADD:
             if (this.isNonStringConstantOutsideParentheses(expression)) {
@@ -4360,10 +4816,13 @@ public class AstBuilder extends GroovyParserBaseVisitor<Object> {
     @Override
     public LambdaExpression visitStandardLambdaExpression(final StandardLambdaExpressionContext ctx) {
         switchExpressionRuleContextStack.push(ctx);
+        asyncClosureStack.push(nextClosureIsAsync);
+        nextClosureIsAsync = false;
         try {
             return configureAST(this.createLambda(ctx.standardLambdaParameters(), ctx.lambdaBody()), ctx);
         } finally {
             switchExpressionRuleContextStack.pop();
+            asyncClosureStack.pop();
         }
     }
 
@@ -4401,6 +4860,8 @@ public class AstBuilder extends GroovyParserBaseVisitor<Object> {
     @Override
     public ClosureExpression visitClosure(final ClosureContext ctx) {
         switchExpressionRuleContextStack.push(ctx);
+        asyncClosureStack.push(nextClosureIsAsync);
+        nextClosureIsAsync = false;
         visitingClosureCount += 1;
         try {
             Parameter[] parameters = asBoolean(ctx.formalParameterList())
@@ -4419,6 +4880,7 @@ public class AstBuilder extends GroovyParserBaseVisitor<Object> {
             return configureAST(new ClosureExpression(parameters, code), ctx);
         } finally {
             switchExpressionRuleContextStack.pop();
+            asyncClosureStack.pop();
             visitingClosureCount -= 1;
         }
     }
@@ -5131,7 +5593,7 @@ public class AstBuilder extends GroovyParserBaseVisitor<Object> {
     }
 
     private BinaryExpression createBinaryExpression(final ExpressionContext left, final Token op, final ExpressionContext right) {
-        return new BinaryExpression((Expression) this.visit(left), this.createGroovyToken(op), (Expression) this.visit(right));
+        return (BinaryExpression) this.combineRebalancing((Expression) this.visit(left), this.createGroovyToken(op), (Expression) this.visit(right), op.getType());
     }
 
     private BinaryExpression createBinaryExpression(final ExpressionContext left, final Token op, final ExpressionContext right, final ExpressionContext ctx) {
@@ -5401,6 +5863,12 @@ public class AstBuilder extends GroovyParserBaseVisitor<Object> {
 
     //--------------------------------------------------------------------------
 
+    private record SwitchExpressionLabel(Token keyword, List<Expression> values, int separator) {
+        private boolean isArrow() {
+            return ARROW == separator;
+        }
+    }
+
     // GRECLIPSE edit
     private class DeclarationListStatement extends Statement {
 
@@ -5457,6 +5925,10 @@ public class AstBuilder extends GroovyParserBaseVisitor<Object> {
     private final Deque<ClassNode> classNodeStack = new ArrayDeque<>();
     private final Deque<List<InnerClassNode>> anonymousInnerClassesDefinedInMethodStack = new ArrayDeque<>();
     private final Deque<GroovyParserRuleContext> switchExpressionRuleContextStack = new ArrayDeque<>();
+    /** one entry per enclosing closure/lambda: TRUE if it is the closure of an {@code async} expression */
+    private final Deque<Boolean> asyncClosureStack = new ArrayDeque<>();
+    /** set just before visiting the closure/lambda of an {@code async} expression; consumed by the closure/lambda visit */
+    private boolean nextClosureIsAsync;
 
     private Tuple2<GroovyParserRuleContext, Exception> numberFormatError;
 
@@ -5495,6 +5967,15 @@ public class AstBuilder extends GroovyParserBaseVisitor<Object> {
     private static final String PACKAGE_INFO = "package-info";
     private static final String PACKAGE_INFO_FILE_NAME = PACKAGE_INFO + ".groovy";
 
+    // GROOVY-10355: a binary expression rebuilt from a "(name) +/- x" cast mis-parse; parents
+    // re-associate it so the textual left-to-right grouping is preserved
+    private static final String REPAIRED_PAREN_NAME_BINARY = "_REPAIRED_PAREN_NAME_BINARY";
+
+    // GROOVY-10355: a cast whose operand is the binary-only keyword identifier "in" or "as"
+    private static final String CAST_OF_BINARY_KEYWORD = "_CAST_OF_BINARY_KEYWORD";
+
+    private static final Pattern BARE_NAME_PATTERN = Pattern.compile("[A-Za-z_$][A-Za-z0-9_$]*(?:\\.[A-Za-z_$][A-Za-z0-9_$]*)*");
+
     private static final String CLASS_NAME = "_CLASS_NAME";
     private static final String INSIDE_PARENTHESES_LEVEL = "_INSIDE_PARENTHESES_LEVEL";
     private static final String IS_INSIDE_INSTANCEOF_EXPR = "_IS_INSIDE_INSTANCEOF_EXPR";
@@ -5517,7 +5998,6 @@ public class AstBuilder extends GroovyParserBaseVisitor<Object> {
     private static final String INTEGER_LITERAL_TEXT = "_INTEGER_LITERAL_TEXT";
     private static final String FLOATING_POINT_LITERAL_TEXT = "_FLOATING_POINT_LITERAL_TEXT";
     private static final String ENCLOSING_INSTANCE_EXPRESSION = "_ENCLOSING_INSTANCE_EXPRESSION";
-    private static final String IS_YIELD_STATEMENT = "_IS_YIELD_STATEMENT";
     private static final String PARAMETER_MODIFIER_MANAGER = "_PARAMETER_MODIFIER_MANAGER";
     private static final String PARAMETER_CONTEXT = "_PARAMETER_CONTEXT";
     private static final String IS_RECORD_GENERATED = "_IS_RECORD_GENERATED";

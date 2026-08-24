@@ -1,5 +1,5 @@
 /*
- * Copyright 2009-2023 the original author or authors.
+ * Copyright 2009-2026 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,6 +15,7 @@
  */
 package org.codehaus.groovy.eclipse.codebrowsing.tests
 
+import static org.eclipse.jdt.groovy.core.tests.GroovyBundle.isAtLeastGroovy
 import static org.eclipse.jdt.groovy.core.tests.GroovyBundle.isParrotParser
 import static org.junit.Assume.assumeTrue
 
@@ -120,19 +121,26 @@ final class CodeSelectKeywordsTests extends BrowsingTestSuite {
 
     @Test
     void testCodeSelectKeywordDef6() {
+        assumeTrue(isParrotParser() && isAtLeastGroovy(60))
+        String contents = 'val (x, y) = [1, 2]'
+        assertCodeSelect([contents], 'val', null)
+    }
+
+    @Test
+    void testCodeSelectKeywordDef7() {
         assumeTrue(isParrotParser())
         String contents = 'final (x, y) = [1, 2]'
         assertCodeSelect([contents], 'final', null)
     }
 
     @Test
-    void testCodeSelectKeywordDef7() {
+    void testCodeSelectKeywordDef8() {
         String contents = 'def (int x, int y) = [1, 2]'
         assertCodeSelect([contents], 'def', null)
     }
 
     @Test
-    void testCodeSelectKeywordDef8() {
+    void testCodeSelectKeywordDef9() {
         String contents = '@Deprecated def (int x, int y) = [1, 2]'
         assertCodeSelect([contents], 'def', null)
     }
@@ -448,15 +456,46 @@ final class CodeSelectKeywordsTests extends BrowsingTestSuite {
         assertCodeSelect([contents], 'break', null)
     }
 
+    @Test // GROOVY-9272
+    void testCodeSelectKeywordYield1() {
+        assumeTrue(isParrotParser() && isAtLeastGroovy(40))
+        String contents = '''\
+            |void test(obj) {
+            |  def str = switch (obj) {
+            |    case Number -> { print obj; yield "number" }
+            |    default     -> "unknown"
+            |  }
+            |}
+            |'''.stripMargin()
+        assertCodeSelect([contents], 'yield', null)
+    }
+
+    @Test // GROOVY-9272
+    void testCodeSelectKeywordYield2() {
+        assumeTrue(isParrotParser() && isAtLeastGroovy(40))
+        String contents = '''\
+            |void test(obj) {
+            |  def str = switch (obj) {
+            |    case Number -> {
+            |      if (obj.isPositive()) yield obj.toString()
+            |      else throw new Exception()
+            |    }
+            |    case String -> obj
+            |  }
+            |}
+            |'''.stripMargin()
+        assertCodeSelect([contents], 'yield', null)
+    }
+
     @Test
     void testCodeSelectKeywordDefault1() {
-        String contents = 'switch(it){case "":break;/**/default:}'
+        String contents = 'switch(it){case "":break;default:break}' // GROOVY-11617
         assertCodeSelect([contents], 'default', null)
     }
 
     @Test
     void testCodeSelectKeywordDefault2() {
-        String contents = 'def closure = { switch(it){case"":break;/**/default:} }'
+        String contents = 'def closure = { switch(it){case "":break;default:break} }'
         assertCodeSelect([contents], 'default', null)
     }
 

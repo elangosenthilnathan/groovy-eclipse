@@ -48,6 +48,7 @@ import org.codehaus.groovy.ast.MethodNode;
 import org.codehaus.groovy.ast.MultipleAssignmentMetadata;
 import org.codehaus.groovy.ast.Parameter;
 import org.codehaus.groovy.ast.PropertyNode;
+import org.codehaus.groovy.ast.RecordComponentNode;
 import org.codehaus.groovy.ast.Variable;
 import org.codehaus.groovy.ast.expr.AnnotationConstantExpression;
 import org.codehaus.groovy.ast.expr.ArgumentListExpression;
@@ -85,6 +86,7 @@ import org.codehaus.groovy.ast.expr.RangeExpression;
 import org.codehaus.groovy.ast.expr.SpreadExpression;
 import org.codehaus.groovy.ast.expr.SpreadMapExpression;
 import org.codehaus.groovy.ast.expr.StaticMethodCallExpression;
+import org.codehaus.groovy.ast.expr.SwitchExpression;
 import org.codehaus.groovy.ast.expr.TernaryExpression;
 import org.codehaus.groovy.ast.expr.TupleExpression;
 import org.codehaus.groovy.ast.expr.UnaryMinusExpression;
@@ -104,6 +106,7 @@ import org.codehaus.groovy.ast.stmt.Statement;
 import org.codehaus.groovy.ast.stmt.SwitchStatement;
 import org.codehaus.groovy.ast.stmt.TryCatchStatement;
 import org.codehaus.groovy.ast.stmt.WhileStatement;
+import org.codehaus.groovy.ast.stmt.YieldStatement;
 import org.codehaus.groovy.ast.tools.GeneralUtils;
 import org.codehaus.groovy.ast.tools.GenericsUtils;
 import org.codehaus.groovy.ast.tools.WideningCategories;
@@ -151,6 +154,12 @@ import java.util.stream.IntStream;
 
 import static org.apache.groovy.ast.tools.ClassNodeUtils.getNestHost;
 import static org.apache.groovy.ast.tools.MethodNodeUtils.withDefaultArgumentMethods;
+import static org.apache.groovy.ast.tools.SwitchExpressionUtils.enumConstantName;
+import static org.apache.groovy.ast.tools.SwitchExpressionUtils.intConstant;
+import static org.apache.groovy.ast.tools.SwitchExpressionUtils.isIntegralType;
+import static org.apache.groovy.ast.tools.SwitchExpressionUtils.isOptimizedIntSwitch;
+import static org.apache.groovy.ast.tools.SwitchExpressionUtils.stringConstant;
+import static org.apache.groovy.ast.tools.SwitchExpressionUtils.unwrapEnumType;
 import static org.apache.groovy.util.BeanUtils.capitalize;
 import static org.apache.groovy.util.BeanUtils.decapitalize;
 import static org.codehaus.groovy.ast.ClassHelper.AUTOCLOSEABLE_TYPE;
@@ -594,9 +603,14 @@ public class StaticTypeCheckingVisitor extends ClassCodeVisitorSupport {
 
     /**
      * Indicates whether the annotated node is configured for {@link TypeCheckingMode#SKIP}.
+     * <p>
+     * The most specific annotation wins: a node whose own type-checking annotation has a
+     * non-SKIP mode is never skipped, whatever an enclosing class or method declares.
+     * Without an annotation of its own, a node inherits skip mode from its enclosing scope.
      */
     public boolean isSkipMode(final AnnotatedNode node) {
         if (node == null) return false;
+        boolean explicitNonSkip = false;
         for (ClassNode tca : getTypeCheckingAnnotations()) {
             List<AnnotationNode> annotations = node.getAnnotations(tca);
             if (annotations != null) {
@@ -609,9 +623,11 @@ public class StaticTypeCheckingVisitor extends ClassCodeVisitorSupport {
                             if (TypeCheckingMode.SKIP.toString().equals(pe.getPropertyAsString())) return true;
                         }
                     }
+                    explicitNonSkip = true;
                 }
             }
         }
+        if (explicitNonSkip) return false; // GROOVY-12292
         if (node instanceof MethodNode) {
             return isSkipMode(node.getDeclaringClass());
         }
@@ -646,13 +662,27 @@ public class StaticTypeCheckingVisitor extends ClassCodeVisitorSupport {
     }
 
     /**
+     * Determines if the two classes belong to the same nest, so a private-access
+     * bridge can be generated between them. Identity comparison is deliberate:
+     * nest-mates only arise within a single source unit, where the outer-class
+     * chain shares {@code ClassNode} instances; name-based {@code equals} could
+     * conflate same-named classes from different origins. Accessibility decisions
+     * ({@link #isFieldAccessible}) must use the same predicate as bridge marking
+     * ({@code checkOrMarkPrivateAccess}), or an access could be admitted for
+     * which no bridge is generated.
+     */
+    private static boolean inSameNest(final ClassNode a, final ClassNode b) {
+        return getNestHost(a) == getNestHost(b);
+    }
+
+    /**
      * Checks for private field access from closure or nestmate.
      */
     private void checkOrMarkPrivateAccess(final Expression source, final FieldNode fn, final boolean lhsOfAssignment) {
         if (fn != null && fn.isPrivate() && !fn.isSynthetic()) {
             ClassNode declaringClass = fn.getDeclaringClass();
             ClassNode enclosingClass = typeCheckingContext.getEnclosingClassNode();
-            if (declaringClass == enclosingClass ? typeCheckingContext.getEnclosingClosure() != null : getNestHost(declaringClass) == getNestHost(enclosingClass)) {
+            if (declaringClass == enclosingClass ? typeCheckingContext.getEnclosingClosure() != null : inSameNest(declaringClass, enclosingClass)) {
                 source.putNodeMetaData(lhsOfAssignment ? PV_FIELDS_MUTATION : PV_FIELDS_ACCESS, fn);
             }
         }
@@ -665,7 +695,7 @@ public class StaticTypeCheckingVisitor extends ClassCodeVisitorSupport {
         ClassNode declaringClass = mn.getDeclaringClass();
         ClassNode enclosingClass = typeCheckingContext.getEnclosingClassNode();
         if (declaringClass != enclosingClass || typeCheckingContext.getEnclosingClosure() != null) {
-            if (mn.isPrivate() && getNestHost(declaringClass) == getNestHost(enclosingClass)) {
+            if (mn.isPrivate() && inSameNest(declaringClass, enclosingClass)) {
                 if (source instanceof MethodReferenceExpression // GROOVY-11301: access bridge for lambda
                         && Float.parseFloat(getSourceUnit().getConfiguration().getTargetBytecode()) < 15)
                     declaringClass.getNodeMetaData(PV_METHODS_ACCESS, k -> new LinkedHashSet<MethodNode>()).add(mn);
@@ -2233,6 +2263,16 @@ out:    if ((samParameterTypes.length == 1 && isOrImplements(samParameterTypes[0
                     getter = getGetterMethod(current, getterName, checkUp);
                     getter = allowStaticAccessToMember(getter, staticOnly);
                 }
+                if (getter == null && current.isRecord()) {
+                    // GROOVY-12225: a precompiled record's component accessor is named for the
+                    // component (e.g. "x()"), so there is no get/is getter and no PropertyNode
+                    for (RecordComponentNode rcn : current.getRecordComponents()) {
+                        if (rcn.getName().equals(propertyName)) {
+                            getter = allowStaticAccessToMember(current.getDeclaredMethod(propertyName, Parameter.EMPTY_ARRAY), staticOnly);
+                            break;
+                        }
+                    }
+                }
                 if (getter != null && ((publicOnly && (!getter.isPublic() || propertyName.equals("class") || propertyName.equals("empty")))
                         // GROOVY-11319:
                         || !hasAccessToMember(typeCheckingContext.getEnclosingClassNode(), getter.getDeclaringClass(), getter.getModifiers()))) {
@@ -2276,7 +2316,8 @@ out:    if ((samParameterTypes.length == 1 && isOrImplements(samParameterTypes[0
                             }
                             pexp.removeNodeMetaData(READONLY_PROPERTY);
                             return true;
-                        } else if (getter != null && (field == null || field.isFinal()) && setters.isEmpty()) {
+                        } else if (getter != null && setters.isEmpty() && (field == null || field.isFinal()
+                                || !isFieldAccessible(field, receiverType, pexp, receiver.getData()))) { // GROOVY-12290: inaccessible field cannot make the property writable
                             pexp.putNodeMetaData(READONLY_PROPERTY, Boolean.TRUE); // GROOVY-9127
                         }
                     }
@@ -2517,10 +2558,32 @@ out:    if ((samParameterTypes.length == 1 && isOrImplements(samParameterTypes[0
         return method instanceof ExtensionMethodNode ? ((ExtensionMethodNode) method).isStaticExtension() : method.isStatic();
     }
 
-    private boolean storeField(final FieldNode field, final PropertyExpression expressionToStoreOn, final ClassNode receiver, final ClassCodeVisitorSupport visitor, final String delegationData, final boolean lhsOfAssignment) {
-        boolean superField = isSuperExpression(expressionToStoreOn.getObjectExpression());
-        boolean accessible = (!superField && receiver.equals(field.getDeclaringClass()) && !field.getDeclaringClass().isAbstract()) // GROOVY-7300, GROOVY-11358
+    /**
+     * Determines if the field can back the given property (or attribute)
+     * expression: accessible by Java rules, or admitted by the receiver-type
+     * leniency (GROOVY-7300, GROOVY-11358) that models dynamic Groovy's
+     * permissive private access. Since GROOVY-12290 that leniency no longer
+     * admits plain property syntax to a private field of a foreign nest — a
+     * direct field access that static compilation cannot honour (no access
+     * bridge exists). The deliberate dynamic escape hatches remain: attribute
+     * access (.@), and closure bodies (GROOVY-9195) — including delegate-resolved
+     * access — whose property dispatch stays dynamic-capable under static compilation.
+     */
+    private boolean isFieldAccessible(final FieldNode field, final ClassNode receiver, final PropertyExpression expression, final String delegationData) {
+        boolean superField = isSuperExpression(expression.getObjectExpression());
+        boolean exactReceiver = (!superField && receiver.equals(field.getDeclaringClass()) && !field.getDeclaringClass().isAbstract()); // GROOVY-7300, GROOVY-11358
+        if (exactReceiver && field.isPrivate() && delegationData == null
+                && typeCheckingContext.getEnclosingClosure() == null
+                && !(expression instanceof AttributeExpression)
+                && !inSameNest(field.getDeclaringClass(), typeCheckingContext.getEnclosingClassNode())) {
+            exactReceiver = false; // GROOVY-12290
+        }
+        return exactReceiver
                 || hasAccessToMember(typeCheckingContext.getEnclosingClassNode(), field.getDeclaringClass(), field.getModifiers());
+    }
+
+    private boolean storeField(final FieldNode field, final PropertyExpression expressionToStoreOn, final ClassNode receiver, final ClassCodeVisitorSupport visitor, final String delegationData, final boolean lhsOfAssignment) {
+        boolean accessible = isFieldAccessible(field, receiver, expressionToStoreOn, delegationData);
         if (!accessible) {
             if (expressionToStoreOn instanceof AttributeExpression) {
                 addStaticTypeError("Cannot access field: " + field.getName() + " of class: " + prettyPrintTypeName(field.getDeclaringClass()), expressionToStoreOn.getProperty());
@@ -2609,6 +2672,7 @@ out:    if ((samParameterTypes.length == 1 && isOrImplements(samParameterTypes[0
     @Override
     public void visitProperty(final PropertyNode node) {
         boolean osc = typeCheckingContext.isInStaticContext;
+        typeCheckingContext.pushTemporaryTypeInfo(); // GROOVY-12166: member scope
         try {
             typeCheckingContext.isInStaticContext = node.isInStaticContext();
             currentProperty = node;
@@ -2617,6 +2681,7 @@ out:    if ((samParameterTypes.length == 1 && isOrImplements(samParameterTypes[0
             visitClassCodeContainer(node.getSetterBlock());
         } finally {
             currentProperty = null;
+            typeCheckingContext.popTemporaryTypeInfo();
             typeCheckingContext.isInStaticContext = osc;
         }
     }
@@ -2625,6 +2690,7 @@ out:    if ((samParameterTypes.length == 1 && isOrImplements(samParameterTypes[0
     @Override
     public void visitField(final FieldNode node) {
         boolean osc = typeCheckingContext.isInStaticContext;
+        typeCheckingContext.pushTemporaryTypeInfo(); // GROOVY-12166: member scope
         try {
             typeCheckingContext.isInStaticContext = node.isInStaticContext();
             currentField = node;
@@ -2632,6 +2698,7 @@ out:    if ((samParameterTypes.length == 1 && isOrImplements(samParameterTypes[0
             visitInitialExpression(node.getInitialExpression(), new FieldExpression(node), node);
         } finally {
             currentField = null;
+            typeCheckingContext.popTemporaryTypeInfo();
             typeCheckingContext.isInStaticContext = osc;
         }
     }
@@ -3466,6 +3533,11 @@ out:    if ((samParameterTypes.length == 1 && isOrImplements(samParameterTypes[0
     @Override
     protected void visitConstructorOrMethod(final MethodNode node, final boolean isConstructor) {
         typeCheckingContext.pushEnclosingMethod(node);
+        // GROOVY-12166: statement-level instanceof narrowing (return, assert)
+        // records into the enclosing temporary-type-info frame; scope it to
+        // this member so narrowing keyed by a shared node (e.g. a FieldNode)
+        // cannot leak into members visited later
+        typeCheckingContext.pushTemporaryTypeInfo();
         final ClassNode returnType = node.getReturnType(); // GROOVY-10660: implicit return case
         if (!isConstructor && (isClosureWithType(returnType) || isFunctionalInterface(returnType))) {
             new ReturnAdder(returnStmt -> applyTargetType(returnType, returnStmt.getExpression())).visitMethod(node);
@@ -3485,6 +3557,7 @@ out:    if ((samParameterTypes.length == 1 && isOrImplements(samParameterTypes[0
             if (node.getCode() != null) superCall.setSourcePosition(node.getCode());
             superCall.visit(this);
         }
+        typeCheckingContext.popTemporaryTypeInfo();
         typeCheckingContext.popEnclosingMethod();
     }
 
@@ -3526,7 +3599,9 @@ out:    if ((samParameterTypes.length == 1 && isOrImplements(samParameterTypes[0
         // GROOVY-5450: create fake constructor node so final field analysis can allow write within non-static initializer block(s)
         ConstructorNode init = new ConstructorNode(0, null, null, new BlockStatement(node.getObjectInitializerStatements(), null));
         typeCheckingContext.pushEnclosingMethod(init);
+        typeCheckingContext.pushTemporaryTypeInfo(); // GROOVY-12166: member scope
         super.visitObjectInitializerStatements(node);
+        typeCheckingContext.popTemporaryTypeInfo();
         typeCheckingContext.popEnclosingMethod();
     }
 
@@ -4882,6 +4957,206 @@ trying: for (ClassNode[] signature : signatures) {
         }
     }
 
+    /**
+     * Type-checks a switch expression: visits the selector and each arm, selects
+     * an {@code isCase} target for non-intrinsic arms, unifies the yielded types
+     * (JEP 361 poly expression), and reports a non-exhaustive switch when the
+     * selector type is statically known.
+     *
+     * @since 6.0.0
+     */
+    @Override
+    public void visitSwitchExpression(final SwitchExpression expression) {
+        typeCheckingContext.pushEnclosingSwitchExpression(expression);
+        try {
+            Map<VariableExpression, List<ClassNode>> oldTracker = pushAssignmentTracking();
+            try {
+                super.visitSwitchExpression(expression);
+            } finally {
+                popAssignmentTracking(oldTracker);
+            }
+
+            List<ClassNode> yieldTypes = typeCheckingContext.getEnclosingSwitchExpressionYieldTypes();
+            ClassNode resultType;
+            if (yieldTypes.isEmpty()) {
+                resultType = OBJECT_TYPE;
+            } else {
+                resultType = yieldTypes.get(0);
+                for (int i = 1; i < yieldTypes.size(); i += 1) {
+                    resultType = lowestUpperBound(resultType, yieldTypes.get(i));
+                }
+                resultType = wrapTypeIfNecessary(checkForTargetType(expression, resultType));
+            }
+            storeType(expression, resultType);
+            expression.setType(resultType);
+
+            typeCheckSwitchExpressionIsCase(expression);
+            checkSwitchExpressionDuplicateLabels(expression);
+            checkSwitchExpressionExhaustiveness(expression);
+        } finally {
+            typeCheckingContext.popTemporaryTypeInfo();
+            typeCheckingContext.popEnclosingSwitchExpression();
+        }
+    }
+
+    /**
+     * Resolves {@code isCase} for every non-null label by running method
+     * selection on a dummy call. Type-checking extensions, instance methods,
+     * DGM and other extensions all see that call. A selected target is stored
+     * on the {@link CaseStatement} for {@code writeDirectMethodCall}; no target
+     * is a compilation error. Primitive int constant switches skip this: their
+     * stack type cannot erase, so tableswitch is guaranteed. Wrapper, String
+     * and enum selectors can erase to {@code Object} (list {@code getAt}, etc.).
+     */
+    private void typeCheckSwitchExpressionIsCase(final SwitchExpression expression) {
+        Expression selector = expression.getExpression();
+        ClassNode selectorType = getType(selector);
+        if (isIntegralType(selectorType)
+                && isOptimizedIntSwitch(selectorType, expression.getCaseStatements())) {
+            return;
+        }
+        for (CaseStatement caseStatement : expression.getCaseStatements()) {
+            Expression caseValue = caseStatement.getExpression();
+            if (isNullConstant(caseValue)) {
+                continue;
+            }
+            ClassNode caseType = getType(caseValue);
+            VariableExpression dummyReceiver = varX("#case", caseType);
+            dummyReceiver.setSourcePosition(caseValue);
+            VariableExpression dummySelector = varX("#selector", getWrapper(selectorType));
+            dummySelector.setSourcePosition(selector);
+            MethodCallExpression call = callX(dummyReceiver, "isCase", args(dummySelector));
+            call.setImplicitThis(false);
+            call.setSourcePosition(caseValue);
+            visitMethodCallExpression(call);
+            MethodNode target = call.getNodeMetaData(DIRECT_METHOD_CALL_TARGET);
+            if (target == null) {
+                MethodNode enclosing = typeCheckingContext.getEnclosingMethod();
+                if (enclosing == null || !isSkipMode(enclosing)) {
+                    addNoMatchingMethodError(caseType, "isCase", new ClassNode[]{getWrapper(selectorType)}, caseValue);
+                }
+                continue;
+            }
+            caseStatement.putNodeMetaData(DIRECT_METHOD_CALL_TARGET, target);
+            Object privateAccess = call.getNodeMetaData(PV_METHODS_ACCESS);
+            if (privateAccess != null) {
+                caseStatement.putNodeMetaData(PV_METHODS_ACCESS, privateAccess);
+            }
+        }
+    }
+
+    /**
+     * Reports a repeated constant case label in a switch expression. Sequential
+     * {@code isCase} semantics make the second arm dead code, and the optimized
+     * {@code tableswitch}/{@code lookupswitch} forms cannot represent it at all,
+     * so it is rejected here, uniformly for type-checked and statically-compiled
+     * code (GROOVY-12289). Labels compared are the same ones the optimizers key
+     * on: int-family, String and enum constants; anything else (GStrings, calls,
+     * regex or collection labels) cannot be proven duplicated statically and is
+     * left to sequential first-match-wins dispatch.
+     *
+     * @since 6.0.0
+     */
+    private void checkSwitchExpressionDuplicateLabels(final SwitchExpression expression) {
+        ClassNode enumType = unwrapEnumType(getType(expression.getExpression()));
+        Set<Object> seen = new HashSet<>();
+        for (CaseStatement caseStatement : expression.getCaseStatements()) {
+            Expression label = caseStatement.getExpression();
+            Object key = null;
+            if (enumType != null && enumType.isEnum()) {
+                String name = enumConstantName(label, enumType);
+                // keyed by type and name so an enum constant never collides with
+                // a string label of the same spelling (a distinct, legal label)
+                if (name != null) key = Map.entry(enumType, name);
+            }
+            if (key == null) key = intConstant(label);
+            if (key == null) key = stringConstant(label);
+            if (key != null && !seen.add(key)) {
+                addStaticTypeError("Duplicate case label: " + label.getText(), label);
+            }
+        }
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    protected void afterSwitchConditionExpressionVisited(final SwitchExpression expression) {
+        typeCheckingContext.pushTemporaryTypeInfo();
+        Expression conditionExpression = expression.getExpression();
+        conditionExpression.putNodeMetaData(TYPE, getType(conditionExpression));
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    protected void afterSwitchCaseStatementsVisited(final SwitchExpression expression) {
+        if (!expression.getDefaultStatement().isEmpty()) {
+            Expression selectable = expression.getExpression();
+            optInstanceOfTypeInfo(selectable, selectable.getNodeMetaData(TYPE));
+        }
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void visitYieldStatement(final YieldStatement statement) {
+        super.visitYieldStatement(statement);
+        if (typeCheckingContext.getEnclosingSwitchExpression() != null) {
+            typeCheckingContext.getEnclosingSwitchExpressionYieldTypes().add(getType(statement.getExpression()));
+        }
+    }
+
+    private Expression selectableOfEnclosingSwitch() {
+        return typeCheckingContext.getEnclosingSwitchSelector();
+    }
+
+    private void checkSwitchExpressionExhaustiveness(final SwitchExpression expression) {
+        if (expression.getDefaultStatement() != null && !expression.getDefaultStatement().isEmpty()) {
+            return;
+        }
+        Expression selector = expression.getExpression();
+        ClassNode selectorType = getType(selector);
+        if (selectorType != null && selectorType.isEnum() && coversAllEnumConstants(expression, selectorType)) {
+            return;
+        }
+        addError("the switch expression does not cover all possible input values", expression);
+    }
+
+    private boolean coversAllEnumConstants(final SwitchExpression expression, final ClassNode enumType) {
+        Set<String> remaining = new LinkedHashSet<>();
+        for (FieldNode field : enumType.redirect().getFields()) {
+            if (field.isEnum()) {
+                remaining.add(field.getName());
+            }
+        }
+        if (remaining.isEmpty() && enumType.isResolved()) {
+            Object[] constants = enumType.getTypeClass().getEnumConstants();
+            if (constants != null) {
+                for (Object constant : constants) {
+                    remaining.add(((Enum<?>) constant).name());
+                }
+            }
+        }
+        if (remaining.isEmpty()) {
+            return false;
+        }
+        for (CaseStatement caseStatement : expression.getCaseStatements()) {
+            Expression caseExpr = caseStatement.getExpression();
+            if (caseExpr instanceof VariableExpression variable) {
+                remaining.remove(variable.getName());
+            } else if (caseExpr instanceof PropertyExpression property
+                    && property.getObjectExpression() instanceof ClassExpression owner
+                    && owner.getType().equals(enumType)
+                    && property.getProperty() instanceof ConstantExpression name) {
+                remaining.remove(name.getText());
+            }
+        }
+        return remaining.isEmpty();
+    }
+
     /** {@inheritDoc} */
     @Override
     protected void afterSwitchConditionExpressionVisited(final SwitchStatement statement) {
@@ -4903,7 +5178,11 @@ trying: for (ClassNode[] signature : signatures) {
     /** {@inheritDoc} */
     @Override
     public void visitCaseStatement(final CaseStatement statement) {
-        Expression selectable = typeCheckingContext.getEnclosingSwitchStatement().getExpression();
+        Expression selectable = selectableOfEnclosingSwitch();
+        if (selectable == null) {
+            super.visitCaseStatement(statement);
+            return;
+        }
         Expression expression = statement.getExpression();
         if (expression instanceof ClassExpression) { // GROOVY-8411: refine the switch type
             if (!optInstanceOfTypeInfo(selectable, expression.getType())) {

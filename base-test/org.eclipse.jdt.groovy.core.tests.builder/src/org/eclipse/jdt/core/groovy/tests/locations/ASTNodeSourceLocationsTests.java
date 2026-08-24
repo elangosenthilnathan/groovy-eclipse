@@ -17,6 +17,7 @@ package org.eclipse.jdt.core.groovy.tests.locations;
 
 import static groovy.test.GroovyAssert.notYetImplemented;
 
+import static org.eclipse.jdt.groovy.core.tests.GroovyBundle.isAtLeastGroovy;
 import static org.eclipse.jdt.groovy.core.tests.GroovyBundle.isParrotParser;
 
 import groovy.lang.GroovyClassLoader;
@@ -195,7 +196,7 @@ public final class ASTNodeSourceLocationsTests {
 
     @Test
     public void testSourceLocations() throws Exception {
-        if ((source.contains("(a)[b]") || (source.contains("( a ) in ") && isParrotParser())) &&
+        if ((source.contains("(a)[b]") || (source.contains("( a ) in ") && isParrotParser() && !isAtLeastGroovy(60))) &&
             notYetImplemented(this)) return;
 
         int offset = source.indexOf(target);

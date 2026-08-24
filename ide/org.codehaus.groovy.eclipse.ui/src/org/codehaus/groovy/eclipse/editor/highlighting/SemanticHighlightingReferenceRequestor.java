@@ -49,6 +49,7 @@ import org.codehaus.groovy.ast.expr.MethodPointerExpression;
 import org.codehaus.groovy.ast.expr.StaticMethodCallExpression;
 import org.codehaus.groovy.ast.expr.VariableExpression;
 import org.codehaus.groovy.ast.stmt.ReturnStatement;
+import org.codehaus.groovy.ast.stmt.YieldStatement;
 import org.codehaus.groovy.eclipse.editor.highlighting.HighlightedTypedPosition.HighlightKind;
 import org.codehaus.groovy.transform.trait.Traits;
 import org.codehaus.jdt.groovy.model.GroovyCompilationUnit;
@@ -110,7 +111,7 @@ public class SemanticHighlightingReferenceRequestor extends SemanticReferenceReq
             return VisitStatus.CONTINUE;
         }
         // ignore statements or nodes with invalid source locations
-        if (!(node instanceof AnnotatedNode || node instanceof ReturnStatement) || endOffset(node, result) < 1) {
+        if (endOffset(node, result) < 1 || !(node instanceof AnnotatedNode || node instanceof ReturnStatement || node instanceof YieldStatement)) {
             if (DEBUG) System.err.println("skipping: " + node);
             return VisitStatus.CONTINUE;
         }
@@ -239,7 +240,7 @@ public class SemanticHighlightingReferenceRequestor extends SemanticReferenceReq
         } else if (node instanceof ArrayExpression && lastGString.includes(node.getStart())) {
             pos = new HighlightedTypedPosition(new Position(newOffset(node), 3), HighlightKind.KEYWORD);
 
-        } else if (node instanceof ReturnStatement && node.getNodeMetaData("_IS_YIELD_STATEMENT") != null) {
+        } else if (node instanceof ReturnStatement ? node.getNodeMetaData("_IS_YIELD_STATEMENT") != null : node instanceof YieldStatement) {
             pos = new HighlightedTypedPosition(new Position(node.getStart(), 5), HighlightKind.KEYWORD);
 
         } else if (DEBUG) {

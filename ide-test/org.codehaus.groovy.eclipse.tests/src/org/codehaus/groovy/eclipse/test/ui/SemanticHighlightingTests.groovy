@@ -5543,7 +5543,7 @@ final class SemanticHighlightingTests extends GroovyEclipseTestSuite {
             |    case MONDAY, FRIDAY, SUNDAY -> 6
             |    case TUESDAY                -> { 7 }
             |    case THURSDAY, SATURDAY     -> { yield 8 }
-            |    case WEDNESDAY              -> { if (true) yield 9; else 0 }
+            |    case WEDNESDAY              -> { if (true) yield 9; else throw new Exception() }
             |    default                     -> throw new IllegalStateException("Invalid day: $day")
             |  }
             |}
@@ -5568,7 +5568,8 @@ final class SemanticHighlightingTests extends GroovyEclipseTestSuite {
             new HighlightedTypedPosition(contents.indexOf('WEDNESDAY'), 9, STATIC_VALUE),
             new HighlightedTypedPosition(contents.lastIndexOf('yield'), 5, KEYWORD),
             new HighlightedTypedPosition(contents.indexOf('9'), 1, NUMBER),
-            new HighlightedTypedPosition(contents.indexOf('0'), 1, NUMBER),
+            new HighlightedTypedPosition(contents.indexOf('Exception'), 'Exception'.length(), CLASS),
+            new HighlightedTypedPosition(contents.indexOf('Exception'), 'Exception'.length(), CTOR_CALL),
             new HighlightedTypedPosition(contents.lastIndexOf('IllegalStateException'), 'IllegalStateException'.length(), CLASS),
             new HighlightedTypedPosition(contents.lastIndexOf('IllegalStateException'), 'IllegalStateException'.length(), CTOR_CALL),
             new HighlightedTypedPosition(contents.indexOf('"'), '"Invalid day: $day"'.length(), GSTRING),

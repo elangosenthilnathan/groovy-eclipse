@@ -8649,4 +8649,31 @@ public final class StaticCompilationTests extends GroovyCompilerTestSuite {
 
         runConformTest(sources, "xx");
     }
+
+    @Test
+    public void testTypeChecked12166() {
+        //@formatter:off
+        String[] sources = {
+            "Main.groovy",
+            "abstract class A {\n" +
+            "  String describe() { 'A' }\n" +
+            "}\n" +
+            "class B extends A {}\n" +
+            "class C extends A {}\n" +
+            "@groovy.transform.CompileStatic\n" +
+            "class Holder {\n" +
+            "  private A a\n" +
+            "  Holder(A a) { this.a = a }\n" +
+            "  String foo() { a.describe() }\n" +
+            "  boolean isB() { return a instanceof B }\n" +
+            "}\n" +
+            "// `field` holds a C and is never a B\n" +
+            "def h = new Holder(new C())\n" +
+            "assert !h.isB()\n" +
+            "println h.foo()\n",
+        };
+        //@formatter:on
+
+        runConformTest(sources, "A");
+    }
 }

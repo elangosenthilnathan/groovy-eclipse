@@ -1912,7 +1912,7 @@ final class SemanticHighlightingTests extends GroovyEclipseTestSuite {
 
     @Test
     void testValKeyword0() {
-        if (isParrotParser() && notYetImplemented(this)) return // GROOVY-9630
+        if (isParrotParser() && isAtLeastGroovy(60) && notYetImplemented(this)) return // GROOVY-9630
 
         String contents = '''\
             |def val
@@ -1936,7 +1936,7 @@ final class SemanticHighlightingTests extends GroovyEclipseTestSuite {
             new HighlightedTypedPosition(contents.indexOf('abc'), 3, VARIABLE),
             new HighlightedTypedPosition(contents.indexOf('ijk'), 3, VARIABLE),
             new HighlightedTypedPosition(contents.indexOf('xyz'), 3, VARIABLE),
-            new HighlightedTypedPosition(contents.indexOf('val'), 3, isParrotParser() && isAtLeastGroovy(60) ? RESERVED : UNKNOWN))
+            new HighlightedTypedPosition(contents.indexOf('val'), 3, isParrotParser() ? (!isAtLeastGroovy(60) ? CLASS : RESERVED) : UNKNOWN))
     }
 
     @Test
@@ -1944,7 +1944,7 @@ final class SemanticHighlightingTests extends GroovyEclipseTestSuite {
         String contents = 'val val = null'
 
         assertHighlighting(contents,
-            new HighlightedTypedPosition(contents.indexOf('val'), 3, isParrotParser() && isAtLeastGroovy(60) ? RESERVED : UNKNOWN),
+            new HighlightedTypedPosition(contents.indexOf('val'), 3, isParrotParser() ? (!isAtLeastGroovy(60) ? CLASS : RESERVED) : UNKNOWN),
             new HighlightedTypedPosition(contents.lastIndexOf('val'), 3, VARIABLE))
     }
 

@@ -1,5 +1,5 @@
 /*
- * Copyright 2009-2024 the original author or authors.
+ * Copyright 2009-2026 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -146,11 +146,15 @@ public class ConvertToPropertyAction extends Action {
                     }
                     edit.addChild(new ReplaceEdit(offset, length, replacement.toString()));
 
-                    boolean rparen = (args.getEnd() < gcu.getContents().length && gcu.getContents()[args.getEnd()] == ')');
+                    int rparenOffset = getRparenOffset(gcu.getContents(), args.getEnd(), ((ASTNode) call).getEnd());
                     if (args.getExpression(0) instanceof NamedArgumentListExpression) {
-                        edit.addChild(rparen ? new ReplaceEdit(args.getEnd(), 1, "]") : new InsertEdit(args.getEnd(), "]"));
-                    } else if (rparen) {
-                        edit.addChild(new DeleteEdit(args.getEnd(), 1));
+                        if (rparenOffset > 0) {
+                            edit.addChild(new ReplaceEdit(rparenOffset, 1, "]"));
+                        } else {
+                            edit.addChild(new InsertEdit(args.getEnd(), "]"));
+                        }
+                    } else if (rparenOffset > 0) {
+                        edit.addChild(new DeleteEdit(rparenOffset, 1));
                     }
 
                     // implicit-this call may require qualifier to retain its semantics
@@ -176,6 +180,15 @@ public class ConvertToPropertyAction extends Action {
             receiver = call.getReceiver().getText();
         }
         return receiver;
+    }
+
+    private static int getRparenOffset(final char[] contents, int index, final int until) {
+        for (; index < until && index < contents.length; index += 1) {
+            if (contents[index] == ')') {
+                return index;
+            }
+        }
+        return 0;
     }
 
     private static boolean isTypeChange(final TextEdit edit, final ASTNode node, final GroovyCompilationUnit unit) {

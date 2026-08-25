@@ -245,25 +245,7 @@ public class CompilationUnitProblemFinder extends Compiler {
 	}
 
 	private static int getRelease(IJavaProject project, ICompilationUnit cu) {
-		// GROOVY add
-		var resource = cu.getResource();
-		if (resource != null)
-		// GROOVY end
-		try {
-			IClasspathEntry[] rawClasspath = project.getRawClasspath();
-			final IPath resourcePath = resource.getFullPath();
-			for (IClasspathEntry e : rawClasspath) {
-				if (e.getEntryKind() == IClasspathEntry.CPE_SOURCE && e.getPath().isPrefixOf(resourcePath)) {
-					String value = ClasspathEntry.getExtraAttribute(e, IClasspathAttribute.RELEASE);
-					if (value != null)
-						return Integer.parseInt(value);
-				}
-			}
-		} catch (JavaModelException | NumberFormatException e) {
-			Util.log(e, "Exception while determining the release value for compilation unit \"" + cu.getElementName() //$NON-NLS-1$
-					+ "\"."); //$NON-NLS-1$
-		}
-		return JavaProject.NO_RELEASE;
+		return JavaProject.getRelease(cu);
 	}
 
 	/*

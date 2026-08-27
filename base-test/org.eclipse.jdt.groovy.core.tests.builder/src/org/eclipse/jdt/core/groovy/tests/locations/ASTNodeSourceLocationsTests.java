@@ -40,6 +40,7 @@ import org.codehaus.groovy.ast.expr.UnaryMinusExpression;
 import org.codehaus.groovy.ast.expr.UnaryPlusExpression;
 import org.codehaus.groovy.ast.expr.VariableExpression;
 import org.codehaus.groovy.ast.stmt.AssertStatement;
+import org.codehaus.groovy.ast.stmt.BlockStatement;
 import org.codehaus.groovy.ast.stmt.Statement;
 import org.codehaus.groovy.control.CompilerConfiguration;
 import org.codehaus.groovy.control.SourceUnit;
@@ -179,6 +180,41 @@ public final class ASTNodeSourceLocationsTests {
 
             {"def meth() {\n  then:\n  assert x == 9\n}", "assert x == 9", AssertStatement.class}, // GRECLIPSE-1270
 
+            {"def c = {}", "{}", BlockStatement.class},
+            {"def c = {};", "{}", BlockStatement.class},
+            {"def c = {}\n", "{}", BlockStatement.class},
+            {"def c = {->};", "{->}", BlockStatement.class},
+            {"def c = {->}\n", "{->}", BlockStatement.class},
+            {"def c = { ->}\n", "{ ->}", BlockStatement.class},
+            {"def c = { ->;}\n", "{ ->;}", BlockStatement.class},
+            {"def c = { foo}\n", "{ foo}", BlockStatement.class},
+            {"def c = { foo;}\n", "{ foo;}", BlockStatement.class},
+            {"def c = { foo\n}\n", "{ foo\n}", BlockStatement.class},
+            {"def c = { -> foo}\n", "{ -> foo}", BlockStatement.class},
+            {"def c = { -> foo;}\n", "{ -> foo;}", BlockStatement.class},
+            {"def c = { -> foo\n}\n", "{ -> foo\n}", BlockStatement.class},
+            {"def c = { bar -> foo}\n", "{ bar -> foo}", BlockStatement.class},
+            {"def c = { bar -> foo\n}\n", "{ bar -> foo\n}", BlockStatement.class},
+            {"def c = { int bar -> foo}\n", "{ int bar -> foo}", BlockStatement.class},
+            {"def c = { int bar -> foo\n}\n", "{ int bar -> foo\n}", BlockStatement.class},
+
+            {"def l = () ->{}", "{}", BlockStatement.class},
+            {"def l = () ->{};", "{}", BlockStatement.class},
+            {"def l = () ->{}\n", "{}", BlockStatement.class},
+            {"def l = () -> {};", "{}", BlockStatement.class},
+            {"def l = () -> {}\n", "{}", BlockStatement.class},
+            {"def l = () -> {;}\n", "{;}", BlockStatement.class},
+            {"def l = () -> {\n}\n", "{\n}", BlockStatement.class},
+            {"def l = () -> {foo}\n", "{foo}", BlockStatement.class},
+            {"def l = () -> { foo}\n", "{ foo}", BlockStatement.class},
+            {"def l = () -> { foo;}\n", "{ foo;}", BlockStatement.class},
+            {"def l = () -> { foo\n}\n", "{ foo\n}", BlockStatement.class},
+            {"def l = (bar) -> {foo}\n", "{foo}", BlockStatement.class},
+            {"def l = (bar) -> { foo}\n", "{ foo}", BlockStatement.class},
+            {"def l = (bar) -> { foo\n}\n", "{ foo\n}", BlockStatement.class},
+            {"def l = (int bar) -> { foo}\n", "{ foo}", BlockStatement.class},
+            {"def l = (int bar) -> { foo\n}\n", "{ foo\n}", BlockStatement.class},
+
             // TODO: package, imports (incl. aliases), annotations, anon. inners,
         };
     }
@@ -196,7 +232,7 @@ public final class ASTNodeSourceLocationsTests {
 
     @Test
     public void testSourceLocations() throws Exception {
-        if ((source.contains("(a)[b]") || (source.contains("( a ) in ") && isParrotParser() && !isAtLeastGroovy(60))) &&
+        if ((source.contains("(a)[b]") || (isParrotParser() ? (source.contains("( a ) in ") && !isAtLeastGroovy(60)) : source.contains(") ->"))) &&
             notYetImplemented(this)) return;
 
         int offset = source.indexOf(target);

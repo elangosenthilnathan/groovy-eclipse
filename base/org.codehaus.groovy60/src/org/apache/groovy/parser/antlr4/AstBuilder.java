@@ -4864,6 +4864,7 @@ public class AstBuilder extends GroovyParserBaseVisitor<Object> {
         nextClosureIsAsync = false;
         visitingClosureCount += 1;
         try {
+            /* GRECLIPSE edit
             Parameter[] parameters = asBoolean(ctx.formalParameterList())
                     ? this.visitFormalParameterList(ctx.formalParameterList())
                     : null;
@@ -4876,7 +4877,14 @@ public class AstBuilder extends GroovyParserBaseVisitor<Object> {
                     configureAST(code, ctx);
                 }
             }
-
+            */
+            Parameter[] parameters =
+                !asBoolean(ctx.ARROW())
+                ? Parameter.EMPTY_ARRAY
+                : !asBoolean(ctx.formalParameterList()) ? null
+                : visitFormalParameterList(ctx.formalParameterList());
+            Statement code = configureAST(visitBlockStatementsOpt(ctx.blockStatementsOpt()), ctx);
+            // GRECLIPSE end
             return configureAST(new ClosureExpression(parameters, code), ctx);
         } finally {
             switchExpressionRuleContextStack.pop();

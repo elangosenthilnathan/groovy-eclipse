@@ -1,5 +1,5 @@
 /*
- * Copyright 2009-2023 the original author or authors.
+ * Copyright 2009-2026 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -109,6 +109,14 @@ final class CodeSelectTypesTests extends BrowsingTestSuite {
     @Test
     void testSelectSuperInterface6() {
         String contents = '@groovy.transform.AutoImplement(code={ 0 }) class Type implements Iterator<String> { }'
+        assertCodeSelect([contents], 'Iterator')
+        assertCodeSelect([contents], 'String')
+    }
+
+    @Test
+    void testSelectSuperInterface7() {
+        String contents = 'class Type implements Serializable, Iterator<String> { @Delegate Map<String,Object> map }'
+        assertCodeSelect([contents], 'Serializable')
         assertCodeSelect([contents], 'Iterator')
         assertCodeSelect([contents], 'String')
     }

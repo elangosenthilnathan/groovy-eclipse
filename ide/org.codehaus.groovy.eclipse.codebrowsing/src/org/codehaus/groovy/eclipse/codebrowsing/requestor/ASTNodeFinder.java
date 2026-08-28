@@ -469,8 +469,8 @@ public class ASTNodeFinder extends DepthFirstVisitor {
                     char c;
                     // use prev and next to further constrain
                     for (int j = i - 1; j >= 0; j -= 1) {
-                        if (superTypes[j].getEnd() > 0) {
-                            a = (superTypes[j].getEnd()) - offset;
+                        if (new Region(offset + a, b - a).regionCoversNode(superTypes[j])) {
+                            a = superTypes[j].getEnd() - offset;
                             while ((c = source.charAt(a)) == ',' || Character.isWhitespace(c)) {
                                 a += 1;
                             }
@@ -478,7 +478,7 @@ public class ASTNodeFinder extends DepthFirstVisitor {
                         }
                     }
                     for (int j = i + 1; j < n; j += 1) {
-                        if (superTypes[j].getStart() > 0) {
+                        if (new Region(offset + a, b - a).regionCoversNode(superTypes[j])) {
                             b = (superTypes[j].getStart() - 1) - offset;
                             while ((c = source.charAt(b - 1)) == ',' || Character.isWhitespace(c)) {
                                 b -= 1;
@@ -502,8 +502,8 @@ public class ASTNodeFinder extends DepthFirstVisitor {
                 char c;
                 // use prev and next to further constrain
                 for (int j = i - 1; j >= 0; j -= 1) {
-                    if (subTypes.get(j).getEnd() > 0) {
-                        a = (subTypes.get(j).getEnd()) - offset;
+                    if (new Region(offset + a, b - a).regionCoversNode(subTypes.get(j))) {
+                        a = subTypes.get(j).getEnd() - offset;
                         while ((c = source.charAt(a)) == ',' || Character.isWhitespace(c)) {
                             a += 1;
                         }
@@ -511,7 +511,7 @@ public class ASTNodeFinder extends DepthFirstVisitor {
                     }
                 }
                 for (int j = i + 1; j < n; j += 1) {
-                    if (subTypes.get(j).getStart() > 0) {
+                    if (new Region(offset + a, b - a).regionCoversNode(subTypes.get(j))) {
                         b = (subTypes.get(j).getStart() - 1) - offset;
                         while ((c = source.charAt(b - 1)) == ',' || Character.isWhitespace(c)) {
                             b -= 1;

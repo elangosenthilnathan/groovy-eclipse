@@ -1,2 +1,66 @@
 /target
 .tycho-consumer-pom.xml
+
+# OS junk
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Editors / IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Logs
+*.log
+logs/
+
+# Environment / secrets
+.env
+.env.local
+.env.*.local
+*.pem
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.mypy_cache/
+.pytest_cache/
+
+# Node / JS
+node_modules/
+dist/
+build/
+.npm/
+.cache/
+coverage/
+
+# Java / Groovy
+*.class
+target/
+.gradle/
+build/
+
+# PL/SQL / SQL dumps
+*.dmp
+*.log.sql
+
+# Compiled / binary
+*.o
+*.so
+*.exe
+*.dll
+
+# Archives
+*.zip
+*.tar.gz
+
+# Misc
+.DS_Store
+*.bak
+*.tmp
